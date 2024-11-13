@@ -1,0 +1,55 @@
+version: '3'
+services:
+
+
+  run:
+    build: .
+    volumes:
+      - ./logs:/code/logs
+      - ./data:/code/data
+#    environment:
+#      - APP_ENV=test
+    entrypoint: [ "sh", "./op/run.sh" ]
+
+  run_prod:
+    build: .
+#    image: sztu_is
+    #    ports:
+    #      - "9999:9001"
+    volumes:
+      - ./logs:/code/logs
+      - ./data:/code/data
+    environment:
+      - APP_ENV=prod
+    entrypoint: [ "sh", "./op/run_prod.sh" ]
+
+
+  run_test:
+    build: .
+    volumes:
+      - ./logs:/code/logs
+      - ./data:/code/data
+    environment:
+      - APP_ENV=test
+    entrypoint: [ "sh", "./op/run_test.sh" ]
+
+
+#  mysql:
+#    image: mysql:8
+#    restart: always
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=iuxwilson112
+#      - MYSQL_USER=insuretech
+#      - MYSQL_PASSWORD=iuxwilson112
+#      - MYSQL_DATABASE=insuretech
+#    ports:
+#      - "3306:3306"  # 主机端口:容器端口
+#    volumes:
+#      - ./mysql-data:/var/lib/mysql
+#
+#  redis:
+#    image: redis:latest
+#    restart: always
+#    command: redis-server --requirepass iuxwilson112
+#    ports:
+#      - "6379:6379"  # 主机端口:容器端口

@@ -1,0 +1,8 @@
+python-dotenv
+loguru==0.7.2
+requests
+supervisor
+celery
+redis
+daphne
+python-okx

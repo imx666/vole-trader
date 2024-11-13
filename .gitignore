@@ -1,0 +1,5 @@
+
+.env.dev
+.DS_Store
+/venv
+/logs
