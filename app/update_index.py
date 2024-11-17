@@ -40,20 +40,19 @@ if __name__ == '__main__':
     from module.redis_url import redis_url
     redis_okx = redis.Redis.from_url(redis_url)
 
-    redis_okx.hset('stock:LUNC-USDT', mapping={'history_max_price': history_max_price, 'history_min_price': history_min_price, 'ATR': ATR})
 
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    redis_okx.hset('stock:LUNC-USDT', 'update_time', current_time)
-
+    redis_okx.hset(f"stock:{target_stock}", 'update_time', current_time)
+    redis_okx.hset(f"stock:{target_stock}", mapping={'history_max_price': history_max_price, 'history_min_price': history_min_price, 'ATR': ATR})
 
 
     # 获取单个字段的值
-    name = redis_okx.hget('stock:LUNC-USDT', 'update_time')
+    name = redis_okx.hget(f"stock:{target_stock}",'update_time')
     name = name.decode()
     print(name)
 
     # 获取整个哈希表的所有字段和值
-    all_info = redis_okx.hgetall('stock:LUNC-USDT')
+    all_info = redis_okx.hgetall(f"stock:{target_stock}")
 
     # 解码每个键和值
     decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
