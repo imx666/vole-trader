@@ -33,8 +33,6 @@ class LOGGING:
 
 
 def beijing_time(timestamp_ms):
-    # 时间戳（以毫秒为单位）
-
     # 将毫秒时间戳转换为秒时间戳
     timestamp_s = int(timestamp_ms) / 1000.0
 
@@ -76,6 +74,7 @@ class GeniusTrader:
         self.marketDataAPI = MarketData.MarketAPI(flag=flag, proxy=proxy, debug=False)
 
         self.wilson_favourite_stock_list = []
+        self.cash_resources = 0
 
     def account(self):
         """账户信息"""
@@ -100,6 +99,7 @@ class GeniusTrader:
             eqUsd = round(float(eqUsd), 2)
 
             balance = round(float(item['eq']), 2)
+            self.cash_resources = balance
             # cashBal = round(float(item['cashBal']), 2)
 
             if currency == "USDT":
@@ -125,6 +125,7 @@ class GeniusTrader:
             eqUsd = round(float(eqUsd), 2)
 
             balance = round(float(item['eq']), 2)
+            self.cash_resources = balance
             # cashBal = round(float(item['cashBal']), 2)
 
             if currency == "USDT":
@@ -149,8 +150,8 @@ class GeniusTrader:
         # 获取单个产品行情信息,成交价，成交量什么的
         result = self.marketDataAPI.get_ticker(instId=target_stock)
         # print(result)
-        last = result['data'][0]['last']
-        LOGGING.info(f"现成交价: {last}")
+        last_price = result['data'][0]['last']
+        LOGGING.info(f"现成交价: {last_price}")
 
 
         # 限价
@@ -161,11 +162,12 @@ class GeniusTrader:
             sellLmt_str = result['data'][0]['sellLmt']
             sellLmt = float(sellLmt_str)
             average_price = 0.5 * (buyLmt + sellLmt)
-            forecast_transaction_price = round(min_account * average_price, 4)
+            # forecast_transaction_price = round(min_account * average_price, 4)
+            forecast_transaction_price = round(min_account * last_price, 4)
             LOGGING.info(f"最高买价: {buyLmt_str}")
             LOGGING.info(f"最低卖价: {sellLmt_str}")
             LOGGING.info(f"均价: {round(average_price, 10)}")
-            LOGGING.info(f"预计下单价格: {forecast_transaction_price} USDT")
+            LOGGING.info(f"预计下单价格(最少): {forecast_transaction_price} USDT")
 
             if forecast_transaction_price < 3 and min_account > 100:
                 dicter = {
@@ -198,7 +200,7 @@ class GeniusTrader:
         result = self.marketDataAPI.get_history_candlesticks(
             instId=target_stock,
             bar="1D",
-            after="1723046400000"
+            # after="1723046400000"
         )
         data = result['data']
         total = []
@@ -206,7 +208,8 @@ class GeniusTrader:
             total.append(item[:5])
 
         # LOGGING.info(result)
-        LOGGING.info(total)
+        # LOGGING.info(total)
+        return total
 
     def total_trade_market(self):
         """所有股票行情"""
@@ -250,12 +253,14 @@ class GeniusTrader:
 
         if result['code'] == '0':
             LOGGING.info("下单成功")
+            LOGGING.info(result)
             self.execution_result(result)
             self.stock_handle_info(target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
             LOGGING.info(f"下单失败: {sMsg}")
-        LOGGING.info(result)
+            LOGGING.info(result)
+
 
 
     def sell_order(self, target_stock, amount, price=None):
@@ -282,12 +287,13 @@ class GeniusTrader:
 
         if result['code'] == '0':
             LOGGING.info("下单成功")
+            LOGGING.info(result)
             self.execution_result(result)
             self.stock_handle_info(target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
             LOGGING.info(f"下单失败: {sMsg}")
-        LOGGING.info(result)
+            LOGGING.info(result)
 
 
     def execution_result(self, result_dict):
@@ -341,9 +347,9 @@ if __name__ == '__main__':
     # genius_trader.total_trade_market()
 
     genius_trader.stock_info(target_stock)
-    genius_trader.stock_candle(target_stock)
+    # genius_trader.stock_candle(target_stock)
     # genius_trader.buy_order(target_stock, amount=2500)
-    # genius_trader.sell_order(target_stock, amount=1000)
+    # genius_trader.sell_order(target_stock, amount=1080)
 
     # 查看订单执行结果
     # genius_trader.execution_result(result_dict)
