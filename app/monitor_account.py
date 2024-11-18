@@ -9,7 +9,6 @@ import asyncio
 import os
 import websockets
 
-from MsgSender.wx_msg import send_wx_info
 
 from pathlib import Path
 from dotenv import load_dotenv
@@ -22,6 +21,8 @@ load_dotenv(dotenv_path)  # 载入环境变量
 api_key = os.getenv('API_KEY')
 secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
+
+from MsgSender.wx_msg import send_wx_info
 
 
 
@@ -51,7 +52,8 @@ def account(result):
             "content": content
         }
     }
-    send_wx_info(1,1, custom=custom_dict,supreme_auth=True)
+    res = send_wx_info(1,1, custom=custom_dict,supreme_auth=True)
+    print(res)
 
 
 async def main():
