@@ -195,11 +195,15 @@ class GeniusTrader:
         #     # LOGGING.info(e)
         #     pass
 
-    def stock_candle(self, target_stock):
+    def stock_candle(self, target_stock, after = None):
+        if after == None:
+            after = ""
+
         # 获取交易产品历史K线数据
         result = self.marketDataAPI.get_history_candlesticks(
             instId=target_stock,
             bar="1D",
+            after=after,
             # after="1723046400000"
         )
         data = result['data']
