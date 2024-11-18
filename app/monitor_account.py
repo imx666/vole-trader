@@ -48,7 +48,6 @@ def account(result):
         # print(f"{currency}, 权益: {cashBal}, 现价: {eqUsd} USDT")
         print(f"{currency}, 权益: {cashBal}")
 
-    print(len(data))
 
     if len(data) == 1:
         item = data[0]
