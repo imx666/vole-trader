@@ -25,16 +25,9 @@ secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
 
+from MsgSender.wx_msg import send_wx_info
 
-timestamp = int(time.time())
-print("timestamp: " + str(timestamp))
-sign = str(timestamp) + 'GET' + '/users/self/verify'
-total_params = bytes(sign, encoding= 'utf-8')
-signature = hmac.new(bytes(secret_key, encoding= 'utf-8'), total_params, digestmod=hashlib.sha256).digest()
-signature = base64.b64encode(signature)
-signature = str(signature, 'utf-8')
 
-print("signature = {0}".format(signature))
 
 target_stock = "FLOKI-USDT"
 
@@ -50,23 +43,52 @@ def account(result):
 
     for item in data:
         currency = item['ccy']
-        cashBal = round(float(item['cashBal']), 2)
+        cashBal = round(float(item['cashBal']), 8)
 
         # print(f"{currency}, 权益: {cashBal}, 现价: {eqUsd} USDT")
         print(f"{currency}, 权益: {cashBal}")
 
+    print(len(data))
+
+    if len(data) == 1:
+        item = data[0]
+        currency = item['ccy']
+        cashBal = round(float(item['cashBal']), 8)
+
+        title = "账户变动"
+        custom_dict = {
+            "msgtype": "markdown",
+            "markdown": {
+                "content": f"""<font color=\"warning\">{title}</font>\n
+                >{currency}<font color=\"comment\">权益: {cashBal}</font>"""
+            }
+        }
+        send_wx_info(1,1, custom=custom_dict,supreme_auth=True)
+
 
 async def main():
-    msg = {
-      "op": "login",
-      "args": [
-        {
-          "apiKey": f'{api_key}',
-          "passphrase": f'{passphrase}',
-          "timestamp": f'{timestamp}',
-          "sign": f'{signature}'
-        }
-      ]
+
+
+    timestamp = int(time.time())
+    print("timestamp: " + str(timestamp))
+    sign = str(timestamp) + 'GET' + '/users/self/verify'
+    total_params = bytes(sign, encoding='utf-8')
+    signature = hmac.new(bytes(secret_key, encoding='utf-8'), total_params, digestmod=hashlib.sha256).digest()
+    signature = base64.b64encode(signature)
+    signature = str(signature, 'utf-8')
+    print("signature = {0}".format(signature))
+
+
+    account_msg = {
+        "op": "login",
+        "args": [
+            {
+                "apiKey": f'{api_key}',
+                "passphrase": f'{passphrase}',
+                "timestamp": f'{timestamp}',
+                "sign": f'{signature}'
+            }
+        ]
     }
 
     # 订阅账户频道的消息
@@ -82,8 +104,8 @@ async def main():
         reconnect_attempts = 0
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
-                print("发送登录消息: ", msg)
-                await websocket.send(json.dumps(msg))
+                print("发送登录消息: ", account_msg)
+                await websocket.send(json.dumps(account_msg))
 
                 # 接收并打印登录响应
                 response = await websocket.recv()
@@ -100,7 +122,7 @@ async def main():
                         # response = await websocket.recv()
                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
 
-                        # print("收到增量数据: ", response)
+                        print("收到增量数据: ", response)
                         response = json.loads(response)
                         if response.get("data"):
                             account(response)
@@ -116,14 +138,6 @@ async def main():
                         except Exception as e:
                             print("连接关闭，正在重连……")
                             break
-
-
-
-        except websockets.exceptions.InvalidURI as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print('uri异常！')
-            await asyncio.sleep(5)  # 等待5秒后重试
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
