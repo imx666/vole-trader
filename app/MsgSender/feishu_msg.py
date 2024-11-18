@@ -80,15 +80,13 @@ if __name__ == "__main__":
     # os.environ['FEISHU_AUTH_CODE'] = 'ZdRWqVqgVK8NR3M8pDrn7n'
     # os.environ['SEND_PERMISSION'] = 'True'
 
-    # 指定.env.dev文件的路径
     from pathlib import Path
     from dotenv import load_dotenv
 
     project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
     # project_path = os.getcwd()  # 此脚本的运行的"启动"路径
-    # print(project_path)
-
-    dotenv_path = os.path.join(project_path, '../../.env.dev')
+    dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
+    load_dotenv(dotenv_path)  # 载入环境变量
 
     # 载入环境变量
     load_dotenv(dotenv_path)
