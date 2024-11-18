@@ -1,4 +1,5 @@
 # 导入日志配置
+import json
 import logging.config
 from datetime import datetime
 
@@ -138,21 +139,28 @@ if __name__ == '__main__':
     project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
     dotenv_path = os.path.join(project_path, '../.env.dev')  # 指定.env.dev文件的路径
     load_dotenv(dotenv_path)  # 载入环境变量
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
     from module.genius_trading import GeniusTrader
     from module.common_index import get_DochianChannel, get_ATR
 
     target_stock = "LUNC-USDT"
     target_stock = "BTC-USDT"
-    # target_stock = "FLOKI-USDT"
-    # target_stock = "OMI-USDT"
-    genius_trader = GeniusTrader()
-    total_candle = genius_trader.stock_candle(target_stock)
+    target_stock = "FLOKI-USDT"
+    target_stock = "OMI-USDT"
+    target_stock = "DOGE-USDT"
+    target_stock = "PEPE-USDT"
 
-    total_candle.reverse()  # 由于时间，倒序
-    # print(total_candle)
-    # for i in total_candle:
-    #     print(i)
+
+    genius_trader = GeniusTrader()
+    # total_candle = genius_trader.stock_candle(target_stock)
+    # total_candle.reverse()  # 由于时间，倒序
+
+    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    with open(total_path, 'r') as file:
+        long_period_candle = json.load(file)
+    # print(long_period_candle)
+
 
     s = 1
     print()
@@ -160,11 +168,11 @@ if __name__ == '__main__':
 
     account_info = Account_info()
 
-    for day in range(len(total_candle)):
+    for day in range(len(long_period_candle)):
         if day >= PERIOD and s == 1:
             print(day)
             # s=0
-            pre_candle = total_candle[day - PERIOD:day]
+            pre_candle = long_period_candle[day - PERIOD:day]
             # for i in pre_candle:
             #     print(i)
 
@@ -172,7 +180,7 @@ if __name__ == '__main__':
             ATR = get_ATR(pre_candle, PERIOD)
             print(f"max: {history_max_price}, \nmin: {history_min_price}, \nATR: {ATR}")
 
-            today_candle = total_candle[day][1:]  # 第一项是时间戳，要移除
+            today_candle = long_period_candle[day][1:]  # 第一项是时间戳，要移除
             today_candle = [float(item) for item in today_candle]
             today_max_price = max(today_candle)
             today_min_price = min(today_candle)
