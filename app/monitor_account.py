@@ -6,30 +6,23 @@ import base64
 import socket
 from datetime import datetime
 import asyncio
-
+import os
 import websockets
 
-# 指定.env.dev文件的路径
+from MsgSender.wx_msg import send_wx_info
+
 from pathlib import Path
 from dotenv import load_dotenv
 
 project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-import os
+# project_path = os.getcwd()  # 此脚本的运行的"启动"路径
+dotenv_path = os.path.join(project_path, '../.env.dev')  # 指定.env.dev文件的路径
+load_dotenv(dotenv_path)  # 载入环境变量
 
-dotenv_path = os.path.join(project_path, '../.env.dev')
-
-# 载入环境变量
-load_dotenv(dotenv_path)
 api_key = os.getenv('API_KEY')
 secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
-
-from MsgSender.wx_msg import send_wx_info
-
-
-
-target_stock = "FLOKI-USDT"
 
 
 def account(result):
@@ -41,28 +34,24 @@ def account(result):
     # totalEq = round(float(totalEq), 2)
     # print(f'总资产: {totalEq} 美元')
 
+    title = "账户更新"
+    content = f"<font color=\"warning\">{title}</font>"
     for item in data:
         currency = item['ccy']
         cashBal = round(float(item['cashBal']), 8)
 
         # print(f"{currency}, 权益: {cashBal}, 现价: {eqUsd} USDT")
         print(f"{currency}, 权益: {cashBal}")
+        content += f"\n>{currency}<font color=\"comment\">权益: {cashBal}</font>"
 
 
-    if len(data) == 1:
-        item = data[0]
-        currency = item['ccy']
-        cashBal = round(float(item['cashBal']), 8)
-
-        title = "账户变动"
-        custom_dict = {
-            "msgtype": "markdown",
-            "markdown": {
-                "content": f"""<font color=\"warning\">{title}</font>\n
-                >{currency}<font color=\"comment\">权益: {cashBal}</font>"""
-            }
+    custom_dict = {
+        "msgtype": "markdown",
+        "markdown": {
+            "content": content
         }
-        send_wx_info(1,1, custom=custom_dict,supreme_auth=True)
+    }
+    send_wx_info(1,1, custom=custom_dict,supreme_auth=True)
 
 
 async def main():
