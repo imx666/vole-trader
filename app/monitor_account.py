@@ -9,7 +9,6 @@ import asyncio
 import os
 import websockets
 
-
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -23,7 +22,6 @@ secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
 from MsgSender.wx_msg import send_wx_info
-
 
 
 def account(result):
@@ -45,20 +43,17 @@ def account(result):
         print(f"{currency}, 权益: {cashBal}")
         content += f"\n>{currency}<font color=\"comment\">权益: {cashBal}</font>"
 
-
     custom_dict = {
         "msgtype": "markdown",
         "markdown": {
             "content": content
         }
     }
-    res = send_wx_info(1,1, custom=custom_dict,supreme_auth=True)
+    res = send_wx_info(1, 1, custom=custom_dict, supreme_auth=True)
     print(res)
 
 
-async def main():
-
-
+def prepare_login():
     timestamp = int(time.time())
     print("timestamp: " + str(timestamp))
     sign = str(timestamp) + 'GET' + '/users/self/verify'
@@ -67,7 +62,6 @@ async def main():
     signature = base64.b64encode(signature)
     signature = str(signature, 'utf-8')
     print("signature = {0}".format(signature))
-
 
     account_msg = {
         "op": "login",
@@ -81,6 +75,10 @@ async def main():
         ]
     }
 
+    return account_msg
+
+
+async def main():
     # 订阅账户频道的消息
     subscribe_msg = {
         "op": "subscribe",
@@ -94,6 +92,7 @@ async def main():
         reconnect_attempts = 0
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
+                account_msg = prepare_login()
                 print("发送登录消息: ", account_msg)
                 await websocket.send(json.dumps(account_msg))
 
@@ -156,7 +155,5 @@ async def main():
 
 
 if __name__ == '__main__':
-
-
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
