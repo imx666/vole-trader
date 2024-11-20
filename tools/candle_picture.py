@@ -16,16 +16,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 target_stock = "LUNC-USDT"
 target_stock = "BTC-USDT"
-target_stock = "FLOKI-USDT"
-target_stock = "OMI-USDT"
+# target_stock = "FLOKI-USDT"
+# target_stock = "OMI-USDT"
 target_stock = "DOGE-USDT"
-target_stock = "PEPE-USDT"
+# target_stock = "PEPE-USDT"
+
+
 
 total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
 with open(total_path, 'r') as file:
     long_period_candle = json.load(file)
-
-
 
 
 # 将数据转换为DataFrame格式
@@ -47,5 +47,4 @@ df.set_index('timestamp', inplace=True)
 # df = df.iloc[::-1]
 
 # 使用mplfinance绘制K线图
-# mpf.plot(df, type='candle', style='charles', title='K线图', ylabel='价格')
-mpf.plot(df, type='candle', style='charles', title=f'K-picture-{target_stock}', ylabel='price')
+mpf.plot(df, type='candle', style='charles', title=f'K-picture-{target_stock}', ylabel='price', )
