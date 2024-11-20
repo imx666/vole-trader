@@ -25,7 +25,6 @@ api_key = os.getenv('API_KEY')
 secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
-
 ATR = 999999
 HISTORY_MAX_PRICE = 999999
 HISTORY_MIN_PRICE = 0
@@ -62,6 +61,7 @@ def buy_order(target_stock, amount, price=None):
 
     return order_msg, client_order_id
 
+
 def sell_order(target_stock, amount, price=None):
     timestamp = int(time.time())
     order_type = "limit"
@@ -89,6 +89,7 @@ def sell_order(target_stock, amount, price=None):
     }
 
     return order_msg, client_order_id
+
 
 # 生成订单消息
 def create_order(target_stock, amount, side, price=None):
@@ -125,7 +126,6 @@ def prepare_login():
     signature = str(signature, 'utf-8')
     print("signature = {0}".format(signature))
 
-
     account_msg = {
         "op": "login",
         "args": [
@@ -140,17 +140,17 @@ def prepare_login():
 
     return account_msg
 
+
 def update_reference_index(target_stock):
     from module.redis_url import redis_url
     redis_okx = redis.Redis.from_url(redis_url)
 
     # 获取单个字段的值
-    name = redis_okx.hget(f"stock:{target_stock}",'update_time')
+    name = redis_okx.hget(f"stock:{target_stock}", 'update_time')
     if name is None:
         return 0
     name = name.decode()
     print(name)
-
 
     # 获取整个哈希表的所有字段和值
     all_info = redis_okx.hgetall(f"stock:{target_stock}")
@@ -159,7 +159,8 @@ def update_reference_index(target_stock):
     decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
     # print(decoded_data)
 
-    history_max_price, history_min_price = float(decoded_data['history_max_price']),float(decoded_data['history_min_price'])
+    history_max_price, history_min_price = float(decoded_data['history_max_price']), float(
+        decoded_data['history_min_price'])
     atr = float(decoded_data['ATR'])
     print(atr)
     print(history_max_price)
@@ -171,10 +172,7 @@ def update_reference_index(target_stock):
     return 1
 
 
-
-
 async def handle_private_connection(target_stock, amount, side):
-
     account_msg = prepare_login()
 
     # if side == "buy":
@@ -230,7 +228,6 @@ async def main():
             print("index_not_exist!!!!")
             break
 
-
         try:
             bj_tz = datetime.timezone(datetime.timedelta(hours=8))
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/public') as websocket:
@@ -253,21 +250,23 @@ async def main():
 
                         now_bj = datetime.datetime.now(bj_tz)
                         if now_bj.hour == 8 and now_bj.minute == 1 and now_bj.second < 10:
-                            update_reference_index(target_stock)
+                            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            print(f"到点了 :{current_time} ")
+                            # update_reference_index(target_stock)
 
-                        # 建仓完成
-                        if float(price) >= HISTORY_MAX_PRICE and ssb > 0:
-                            ssb -= 1
-                            asyncio.create_task(handle_private_connection(target_stock, amount,"buy"))
-                            LONG_POSITION+=1
-
-                        if float(price) >= HISTORY_MAX_PRICE+LONG_POSITION*0.5*ATR and LONG_POSITION <= 4:
-                            asyncio.create_task(handle_private_connection(target_stock, amount,"buy"))
-                            LONG_POSITION+=1
-
-
-                        if float(price) <= HISTORY_MIN_PRICE:
-                            asyncio.create_task(handle_private_connection(target_stock, amount,"sell"))
+                        # # 建仓完成
+                        # if float(price) >= HISTORY_MAX_PRICE and ssb > 0:
+                        #     ssb -= 1
+                        #     asyncio.create_task(handle_private_connection(target_stock, amount,"buy"))
+                        #     LONG_POSITION+=1
+                        #
+                        # if float(price) >= HISTORY_MAX_PRICE+LONG_POSITION*0.5*ATR and LONG_POSITION <= 4:
+                        #     asyncio.create_task(handle_private_connection(target_stock, amount,"buy"))
+                        #     LONG_POSITION+=1
+                        #
+                        #
+                        # if float(price) <= HISTORY_MIN_PRICE:
+                        #     asyncio.create_task(handle_private_connection(target_stock, amount,"sell"))
 
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
