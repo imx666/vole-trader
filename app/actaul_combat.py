@@ -36,7 +36,7 @@ LOGGING = logging.getLogger("app_01")
 # class LOGGING:
 #     @staticmethod
 #     def info(message):
-#         print(message)
+#         LOGGING.info(message)
 
 
 from MsgSender.wx_msg import send_wx_info
@@ -134,13 +134,13 @@ def create_order(target_stock, amount, side, price=None):
 
 def prepare_login():
     timestamp = int(time.time())
-    print(f"timestamp: {str(timestamp)}")
+    LOGGING.info(f"timestamp: {str(timestamp)}")
     sign = str(timestamp) + 'GET' + '/users/self/verify'
     total_params = bytes(sign, encoding='utf-8')
     signature = hmac.new(bytes(secret_key, encoding='utf-8'), total_params, digestmod=hashlib.sha256).digest()
     signature = base64.b64encode(signature)
     signature = str(signature, 'utf-8')
-    print(f"signature = {signature}")
+    LOGGING.info(f"signature = {signature}")
 
     account_msg = {
         "op": "login",
@@ -166,21 +166,22 @@ def update_reference_index(target_stock):
     if name is None:
         return 0
     name = name.decode()
-    print(name)
+    LOGGING.info("开始更新每日参数")
+    LOGGING.info(f"参数更新的最后日期: {name}")
 
     # 获取整个哈希表的所有字段和值
     all_info = redis_okx.hgetall(f"stock:{target_stock}")
 
     # 解码每个键和值
     decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-    # print(decoded_data)
+    # LOGGING.info(decoded_data)
 
     history_max_price, history_min_price = float(decoded_data['history_max_price']), float(
         decoded_data['history_min_price'])
     atr = float(decoded_data['ATR'])
-    print(atr)
-    print(history_max_price)
-    print(history_min_price)
+    LOGGING.info(atr)
+    LOGGING.info(history_max_price)
+    LOGGING.info(history_min_price)
 
     global ATR, up_Dochian_price, down_Dochian_price
     ATR, up_Dochian_price, down_Dochian_price = atr, history_max_price, history_min_price
@@ -210,20 +211,20 @@ async def handle_private_connection(target_stock, amount, side):
     # else:
     #     order_msg, client_order_id = sell_order(target_stock, amount)
     order_msg, client_order_id = create_order(target_stock, amount, side, price=None)
-    print(order_msg)
+    LOGGING.info(order_msg)
 
     async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
-        print(f"发送登录消息: {account_msg}")
+        LOGGING.info(f"发送登录消息: {account_msg}")
         await websocket.send(json.dumps(account_msg))
         response = await websocket.recv()
-        print(f"登录响应: {response}")
+        LOGGING.info(f"登录响应: {response}")
         data_dict = json.loads(response)
-        print(data_dict)
+        LOGGING.info(data_dict)
 
         # 发送订单
         await websocket.send(json.dumps(order_msg))
         subscribe_response = await websocket.recv()
-        print(f"订阅响应: {subscribe_response}")
+        LOGGING.info(f"订阅响应: {subscribe_response}")
 
         # 手动关闭连接（虽然 async with 会自动关闭，但可以显示调用关闭）
         await websocket.close()
@@ -266,7 +267,7 @@ async def main():
         # 更新震荡参数
         flag_exit = update_reference_index(target_stock)
         if not flag_exit:
-            print("index_not_exist!!!!")
+            LOGGING.info("index_not_exist!!!!")
             break
 
         try:
@@ -274,7 +275,7 @@ async def main():
                 # 发送订阅请求
                 await websocket.send(json.dumps(subscribe_msg))
                 subscribe_response = await websocket.recv()
-                print(f"订阅响应: {subscribe_response}")
+                LOGGING.info(f"订阅响应: {subscribe_response}")
 
                 # 持续监听增量数据
                 while True:
@@ -284,9 +285,9 @@ async def main():
                         price = data_dict["data"][0]["px"]
                         num = data_dict["data"][0]["sz"]
 
-                        print(f"标的:{target_stock}")
-                        print(f"成交价格:{price}")
-                        print(f"成交数量:{num}")
+                        # LOGGING.info(f"标的:{target_stock}")
+                        # LOGGING.info(f"成交价格:{price}")
+                        # LOGGING.info(f"成交数量:{num}")
 
                         bj_tz = timezone(timedelta(hours=8))
                         now_bj = datetime.now().astimezone(bj_tz)
@@ -298,9 +299,11 @@ async def main():
                             if current_time not in day_li:
                                 flag = 0
                                 day_li.append(current_time)
-                                print(f"到点了 :{current_time} ")
+                                LOGGING.info(f"到点了 :{current_time} ")
                                 res = send_wx_info("更新策略参数", f"{current_time}", supreme_auth=True)
-                                print(res)
+                                LOGGING.info(res)
+                                account_info.print_all_info()
+
                                 # update_reference_index(target_stock)
 
                         now_price = float(price)
@@ -309,14 +312,14 @@ async def main():
                         position = account_info.long_position
                         target_market_price = up_Dochian_price
                         if contrast_range(now_price, target_market_price) and position == 0:
-                            print("建仓")
+                            LOGGING.info("建仓")
                             flag = 1
                             # buy_days.append([today_timestamp, target_market_price])
 
                             amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
                             total_cost = amount * target_market_price
-                            print(f"amount: {amount}, price: {target_market_price}")
-                            print(f"total_cost: {round(total_cost, 3)}")
+                            LOGGING.info(f"amount: {amount}, price: {target_market_price}")
+                            LOGGING.info(f"total_cost: {round(total_cost, 3)}")
 
                             account_info.update_info(
                                 {
@@ -331,20 +334,20 @@ async def main():
                                     "total_ratio": 1.0
                                 }
                             )
-                            print(f"balance:{round(account_info.balance, 3)}")
+                            LOGGING.info(f"balance:{round(account_info.balance, 3)}")
 
                         for _ in range(account_info.max_long_position):
                             position = account_info.long_position
                             target_market_price = round(account_info.open_price + position * 0.5 * ATR, 10)
                             if contrast_range(now_price, target_market_price) and 0 < position <= account_info.max_long_position:
-                                print("加仓")
+                                LOGGING.info("加仓")
                                 flag = 1
                                 # buy_days.append([today_timestamp, target_market_price])
 
                                 amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
                                 now_cost = amount * target_market_price
-                                print(f"amount: {amount}, price: {target_market_price}")
-                                print(f"total_cost: {round(now_cost, 3)}")
+                                LOGGING.info(f"amount: {amount}, price: {target_market_price}")
+                                LOGGING.info(f"total_cost: {round(now_cost, 3)}")
 
                                 account_info.update_info(
                                     {
@@ -356,25 +359,25 @@ async def main():
                                         "max_hold_amount": account_info.hold_amount + amount,
                                     }
                                 )
-                                print(f"balance:{round(account_info.balance, 3)}")
+                                LOGGING.info(f"balance:{round(account_info.balance, 3)}")
 
                         for _ in range(account_info.max_sell_times):
                             position = account_info.long_position
                             sell_time = account_info.sell_times
                             target_market_price = round(account_info.open_price + (0.5 * sell_time + 2) * ATR, 10)
                             if contrast_range(now_price, target_market_price) and position > 0:
-                                print(f"减仓(+{0.5 * sell_time + 2}N线, 分批止盈)")
+                                LOGGING.info(f"减仓(+{0.5 * sell_time + 2}N线, 分批止盈)")
                                 flag = 1
                                 # sell_days.append([today_timestamp, target_market_price])
 
                                 ratio = 0.3 if sell_time <= 1 else 0.2
-                                print(f"ratio: {ratio}")
+                                LOGGING.info(f"ratio: {ratio}")
                                 sell(account_info, target_market_price, ratio=ratio, today_timestamp=today_timestamp)
 
                         position = account_info.long_position
                         target_market_price = round(account_info.hold_price + 0.1 * ATR, 10)
                         if contrast_range(now_price, target_market_price) and position > 0 and account_info.sell_times == account_info.max_sell_times and flag == 0:
-                            print("减仓(+1.5N线, 追加止盈)")
+                            LOGGING.info("减仓(+1.5N线, 追加止盈)")
                             # sell_days.append([today_timestamp, target_market_price])
                             sell(account_info, target_market_price, ratio=0.3, today_timestamp=today_timestamp)
 
@@ -384,7 +387,7 @@ async def main():
                             hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
                             target_market_price = round(hold_average_price + 0.5 * ATR, 10)
                             if contrast_range(now_price, target_market_price) and position > 0:
-                                print("平仓(+0N线, 动态追踪止损)")
+                                LOGGING.info("平仓(+0N线, 动态追踪止损)")
                                 flag = 1
 
                                 # sell_empty_days.append([today_timestamp, target_market_price])
@@ -395,8 +398,8 @@ async def main():
                         target_market_price = max(stop_loss_price, down_Dochian_price)
                         if contrast_range(now_price, target_market_price) and position > 0 and flag == 0:
                             flag = 1
-                            print("平仓(max-0.5N线/唐奇安)")
-                            print(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
+                            LOGGING.info("平仓(max-0.5N线/唐奇安)")
+                            LOGGING.info(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
 
                             # sell_empty_days.append([today_timestamp, target_market_price])
                             sell(account_info, target_market_price, today_timestamp=today_timestamp)
@@ -407,8 +410,8 @@ async def main():
                         target_market_price = min(stop_loss_price, down_Dochian_price)
                         if contrast_range(now_price, target_market_price) and position > 0 and flag == 0:
                             flag = 1
-                            print("平仓(min-0.5N线/唐奇安)")
-                            print(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
+                            LOGGING.info("平仓(min-0.5N线/唐奇安)")
+                            LOGGING.info(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
 
                             # sell_empty_days.append([today_timestamp, target_market_price])
                             sell(account_info, target_market_price, today_timestamp=today_timestamp)
@@ -432,12 +435,12 @@ async def main():
                         try:
                             await websocket.send('ping')
                             res = await websocket.recv()
-                            print(res)
+                            LOGGING.info(res)
                             continue
 
                         except Exception as e:
-                            print(f"连接关闭，正在重连…… {e}")
-                            # print(e)
+                            LOGGING.info(f"连接关闭，正在重连…… {e}")
+                            # LOGGING.info(e)
                             break
 
         # 重新尝试连接，使用指数退避策略
@@ -445,8 +448,8 @@ async def main():
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            print(f"{current_time} Reconnecting in {wait_time} seconds...")
-            print(f"Connection closed: {e}")
+            LOGGING.info(f"{current_time} Reconnecting in {wait_time} seconds...")
+            LOGGING.info(f"Connection closed: {e}")
             await asyncio.sleep(wait_time)
 
         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
@@ -454,14 +457,14 @@ async def main():
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            print(f"{current_time} Reconnecting in {wait_time} seconds...")
-            print(f"Connection closed: {e}")
+            LOGGING.info(f"{current_time} Reconnecting in {wait_time} seconds...")
+            LOGGING.info(f"Connection closed: {e}")
             await asyncio.sleep(wait_time)
 
         except Exception as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print(f'其他 {e}')
+            LOGGING.info(f"{current_time} 连接断开，正在重连……")
+            LOGGING.info(f'其他 {e}')
 
 
 if __name__ == '__main__':
@@ -470,13 +473,13 @@ if __name__ == '__main__':
 
 
     # result = contrast_range(99.005, 100)
-    # print(result)
+    # LOGGING.info(result)
 
-    # print(ATR)
+    # LOGGING.info(ATR)
     #
     # target_stock = "LUNC-USDT"
     # flag_exit = update_reference_index(target_stock)
     # if not flag_exit:
-    #     print("index_not_exist!!!!")
+    #     LOGGING.info("index_not_exist!!!!")
     #
-    # print(ATR)
+    # LOGGING.info(ATR)
