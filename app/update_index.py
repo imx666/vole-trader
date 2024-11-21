@@ -28,13 +28,21 @@ if __name__ == '__main__':
     from module.genius_trading import GeniusTrader
 
     target_stock = "LUNC-USDT"
+    target_stock = "LUNC-USDT"
+    target_stock = "BTC-USDT"
+    # target_stock = "FLOKI-USDT"
+    # target_stock = "OMI-USDT"
+    # target_stock = "DOGE-USDT"
+    # target_stock = "PEPE-USDT"
+
     genius_trader = GeniusTrader()
     total_candle = genius_trader.stock_candle(target_stock)
 
     from module.common_index import get_DochianChannel, get_ATR
 
-    history_max_price, history_min_price = get_DochianChannel(total_candle)
-    ATR = get_ATR(total_candle)
+    PERIOD = 5
+    history_max_price, history_min_price = get_DochianChannel(total_candle, PERIOD)
+    ATR = get_ATR(total_candle, PERIOD)
 
 
     from module.redis_url import redis_url
