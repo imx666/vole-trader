@@ -52,9 +52,10 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     data = df['high']
     min_value = data.min()
     max_value = data.max()
+    delta = max_value - min_value
 
     # 设置ax1的y轴范围
-    ax1.set_ylim(min_value * 0.7, max_value * 1.1)  # 上限为最大值的110%，确保顶部也有足够的空间
+    ax1.set_ylim(min_value - 0.5 * delta, max_value * 1.1)  # 上限为最大值的110%，确保顶部也有足够的空间
 
 
     # 绘制蜡烛图
@@ -70,13 +71,11 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     sell_empty_df = pd.DataFrame(sell_empty_days, columns=['timestamp', 'value'])
     sell_empty_df['timestamp'] = pd.to_datetime(sell_empty_df['timestamp'], unit='ms')
 
-
+    # 唐奇安通道
     UpDochianChannel_df = pd.DataFrame(UpDochianChannel, columns=['timestamp', 'value'])
     UpDochianChannel_df['timestamp'] = pd.to_datetime(UpDochianChannel_df['timestamp'], unit='ms')
     DownDochianChannel_df = pd.DataFrame(DownDochianChannel, columns=['timestamp', 'value'])
     DownDochianChannel_df['timestamp'] = pd.to_datetime(DownDochianChannel_df['timestamp'], unit='ms')
-
-
 
     # 连线
     plt.plot(
@@ -85,7 +84,8 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
         color='green',
         label='Up Line',
         linestyle='-',
-        linewidth=1
+        linewidth=0.9,
+        alpha=0.5
     )
     plt.plot(
         DownDochianChannel_df['timestamp'],
@@ -93,8 +93,9 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
         color='red',
         label='Down Line',
         linestyle='-',
-        linewidth=1
-        )
+        linewidth=0.9,
+        alpha=0.5
+    )
 
     # 在指定的位置绘制卖出点
     plt.scatter(buy_df['timestamp'], buy_df['value'], color='blue', label='Buy Points', s=10)
@@ -111,9 +112,6 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     ax1.set_xlabel('Date')
     ax1.set_ylabel('Price')
 
-    # 图例和标题
-    # ax1.legend(loc='upper left')
-    # ax2.legend(loc='upper right')
 
 
 
@@ -133,28 +131,12 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     else:
         y_min = min_value * 1.5  # 如果有负数，则下限为最小值的110%
 
-    if y_min > -0.1:
-        y_min = -0.1
+    y_min = -0.1 if y_min > -0.1 else y_min
     print(y_min)
 
     # 设置ax1的y轴范围
     ax2.set_ylim(y_min, 1)  # 上限为最大值的110%，确保顶部也有足够的空间
     # ax2.set_ylim(-0.2, 1)
-
-    # # 根据return_rate的值选择颜色
-    # colors = ['green' if rate > 0 else 'red' for rate in return_rate_df['return_rate']]
-    # # 绘制回报率柱状图（右轴）
-    # ax2.bar(
-    #     return_rate_df['timestamp'],
-    #     return_rate_df['return_rate'],
-    #     color=colors,
-    #     alpha=0.6,
-    #     label='Return Rate',
-    #     width=1
-    # )
-    # ax2.axhline(y=0, color='black', linestyle='--', linewidth=1)
-    # # ax2.set_ylabel('Return Rate', color='orange')
-    # # ax2.tick_params(axis='y', labelcolor='orange')
 
     # 分别处理正回报率和负回报率的数据点
     positive_rates = return_rate_df[return_rate_df['return_rate'] > 0]
@@ -180,7 +162,6 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     )
     ax2.axhline(y=0, color='black', linestyle='--', linewidth=1)
 
-
     # 添加数值标签
     for index, row in positive_rates.iterrows():
         ax2.text(row['timestamp'], row['return_rate'] + 0.02,  # 在柱子上方一点的位置
@@ -195,17 +176,12 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
 
 
 
-
-
-
-
-
-
-
-
+    # 图例和标题
+    ax1.legend(loc='upper left')
+    ax2.legend(loc='upper right')
 
     # 美化图表
-    # plt.legend()
+    plt.legend()
     # plt.tight_layout()
 
     # 显示图表
