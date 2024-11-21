@@ -48,6 +48,15 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     # 创建图形和轴
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
+    # 计算y轴的上下限
+    data = df['high']
+    min_value = data.min()
+    max_value = data.max()
+
+    # 设置ax1的y轴范围
+    ax1.set_ylim(min_value * 0.7, max_value * 1.1)  # 上限为最大值的110%，确保顶部也有足够的空间
+
+
     # 绘制蜡烛图
     plot_candlestick(ax1, df)
 
@@ -112,21 +121,85 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     return_rate_df = pd.DataFrame(return_rate_list, columns=['timestamp', 'return_rate'])
     return_rate_df['timestamp'] = pd.to_datetime(return_rate_df['timestamp'], unit='ms')# 创建右侧轴
     ax2 = ax1.twinx()
-    ax2.set_ylim(-0.1, 1)
-    # 根据return_rate的值选择颜色
-    colors = ['green' if rate > 0 else 'red' for rate in return_rate_df['return_rate']]
-    # 绘制回报率柱状图（右轴）
+    # 计算y轴的上下限
+    data = return_rate_df['return_rate']
+    min_value = data.min()
+    max_value = data.max()
+    print(min_value, max_value)
+
+    # 动态计算y轴的下限，确保y=0这条线与底部有一定的距离
+    if min_value >= 0:
+        y_min = -0.1  # 如果所有值都是正数，则下限为最大值的-10%
+    else:
+        y_min = min_value * 1.5  # 如果有负数，则下限为最小值的110%
+
+    if y_min > -0.1:
+        y_min = -0.1
+    print(y_min)
+
+    # 设置ax1的y轴范围
+    ax2.set_ylim(y_min, 1)  # 上限为最大值的110%，确保顶部也有足够的空间
+    # ax2.set_ylim(-0.2, 1)
+
+    # # 根据return_rate的值选择颜色
+    # colors = ['green' if rate > 0 else 'red' for rate in return_rate_df['return_rate']]
+    # # 绘制回报率柱状图（右轴）
+    # ax2.bar(
+    #     return_rate_df['timestamp'],
+    #     return_rate_df['return_rate'],
+    #     color=colors,
+    #     alpha=0.6,
+    #     label='Return Rate',
+    #     width=1
+    # )
+    # ax2.axhline(y=0, color='black', linestyle='--', linewidth=1)
+    # # ax2.set_ylabel('Return Rate', color='orange')
+    # # ax2.tick_params(axis='y', labelcolor='orange')
+
+    # 分别处理正回报率和负回报率的数据点
+    positive_rates = return_rate_df[return_rate_df['return_rate'] > 0]
+    negative_rates = return_rate_df[return_rate_df['return_rate'] <= 0]
+
+    # 绘制正回报率的柱状图
     ax2.bar(
-        return_rate_df['timestamp'],
-        return_rate_df['return_rate'],
-        color=colors,
+        positive_rates['timestamp'],
+        positive_rates['return_rate'],
+        color='green',
         alpha=0.6,
-        label='Return Rate',
-        width=1
+        label='Positive Return Rate',
+        width=1.5
+    )
+    # 绘制负回报率的柱状图
+    ax2.bar(
+        negative_rates['timestamp'],
+        negative_rates['return_rate'],
+        color='red',
+        alpha=0.6,
+        label='Negative Return Rate',
+        width=1.5
     )
     ax2.axhline(y=0, color='black', linestyle='--', linewidth=1)
-    # ax2.set_ylabel('Return Rate', color='orange')
-    # ax2.tick_params(axis='y', labelcolor='orange')
+
+
+    # 添加数值标签
+    for index, row in positive_rates.iterrows():
+        ax2.text(row['timestamp'], row['return_rate'] + 0.02,  # 在柱子上方一点的位置
+                 '{:.2%}'.format(row['return_rate']),
+                 ha='center', va='bottom', color='black', fontsize=5)
+
+    for index, row in negative_rates.iterrows():
+        ax2.text(row['timestamp'], row['return_rate'] - 0.02,  # 在柱子下方一点的位置
+                 '{:.2%}'.format(row['return_rate']),
+                 ha='center', va='top', color='black', fontsize=5)
+
+
+
+
+
+
+
+
+
 
 
 
