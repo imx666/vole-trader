@@ -1,6 +1,7 @@
 # 导入日志配置
 import json
 import logging.config
+import threading
 from datetime import datetime
 
 from utils.logging_config import Logging_dict
@@ -123,48 +124,9 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
     print(f"balance: {round(account_info.balance, 3)}")
 
 
-if __name__ == '__main__':
-
-    import os
-    from pathlib import Path
-    from dotenv import load_dotenv
-
-    project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-    dotenv_path = os.path.join(project_path, '../.env.dev')  # 指定.env.dev文件的路径
-    load_dotenv(dotenv_path)  # 载入环境变量
-    BASE_DIR = Path(__file__).resolve().parent.parent
-
-    # from module.genius_trading import GeniusTrader
-    from module.common_index import get_DochianChannel, get_ATR
-
-    target_stock = "LUNC-USDT"
-    target_stock = "BTC-USDT"
-    # target_stock = "FLOKI-USDT"
-    # target_stock = "OMI-USDT"  # 表现的太差了，应该增加持仓天数限制
-    # target_stock = "DOGE-USDT"
-    # target_stock = "PEPE-USDT"
-
-    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
-    with open(total_path, 'r') as file:
-        long_period_candle = json.load(file)
-
-    PERIOD = 3
-    buy_days = []
-    sell_days = []
-    sell_empty_days = []
-
-    UpDochianChannel = []
-    DownDochianChannel = []
-
-    start_day = 250
-    start_day = 150
-    end_day = 300
-    end_day = 350
-
-    os.system("clear")
-
-    long_period_candle = long_period_candle[start_day:end_day]
+def execution_plan(target_stock, long_period_candle):
     account_info = Account_info()
+
     for day in range(len(long_period_candle)):
         if day < PERIOD:
             continue
@@ -255,7 +217,7 @@ if __name__ == '__main__':
 
         position = account_info.long_position
         target_market_price = round(account_info.hold_price + 0.1 * ATR, 10)
-        print(f"追加:{target_market_price}")
+        # print(f"追加:{target_market_price}")
         if today_max_price > target_market_price > today_min_price and position > 0 and account_info.sell_times == account_info.max_sell_times and flag == 0:
             print("减仓(+1.5N线, 追加止盈)")
             sell_days.append([today_timestamp, target_market_price])
@@ -269,8 +231,9 @@ if __name__ == '__main__':
             # target_market_price = round(hold_average_price, 10)
             if today_min_price < target_market_price < today_max_price and position > 0:
                 print("平仓(+0N线, 动态追踪止损)")
-                sell_empty_days.append([today_timestamp, target_market_price])
+                flag = 1
 
+                sell_empty_days.append([today_timestamp, target_market_price])
                 sell(account_info, target_market_price, today_timestamp=today_timestamp)
 
         # position = account_info.long_position
@@ -285,13 +248,25 @@ if __name__ == '__main__':
         stop_loss_price = round(account_info.open_price - 0.5 * ATR, 10)
         target_market_price = max(stop_loss_price, down_Dochian_price)
         if today_min_price < target_market_price < today_max_price and position > 0 and flag == 0:
-            print("平仓(-0.5N线/唐奇安)")
+            flag = 1
+            print("平仓(max-0.5N线/唐奇安)")
             print(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
-            sell_empty_days.append([today_timestamp, target_market_price])
 
+            sell_empty_days.append([today_timestamp, target_market_price])
             sell(account_info, target_market_price, today_timestamp=today_timestamp)
 
+        target_market_price = min(stop_loss_price, down_Dochian_price)
+        if today_min_price < target_market_price < today_max_price and position > 0 and flag == 0:
+            print("平仓(min-0.5N线/唐奇安)")
+            print(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
 
+            sell_empty_days.append([today_timestamp, target_market_price])
+            sell(account_info, target_market_price, today_timestamp=today_timestamp)
+
+        # if today_min_price < down_Dochian_price:
+        #     print("小于")
+        #     print(position)
+        #     print(flag)
 
 
         print()
@@ -308,3 +283,57 @@ if __name__ == '__main__':
 
     draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day, UpDochianChannel,
                  DownDochianChannel, account_info.return_rate_list)
+
+
+
+if __name__ == '__main__':
+
+    import os
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
+    dotenv_path = os.path.join(project_path, '../.env.dev')  # 指定.env.dev文件的路径
+    load_dotenv(dotenv_path)  # 载入环境变量
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    # from module.genius_trading import GeniusTrader
+    from module.common_index import get_DochianChannel, get_ATR
+
+
+
+    PERIOD = 3
+    buy_days = []
+    sell_days = []
+    sell_empty_days = []
+
+    UpDochianChannel = []
+    DownDochianChannel = []
+
+    start_day = 250
+    start_day = 150
+    start_day = 50
+    end_day = 300
+    end_day = 350
+    end_day = 400
+
+    os.system("clear")
+    target_stock = os.getenv("target_stock")
+
+
+
+    # target_stock = "LUNC-USDT"
+    # target_stock = "BTC-USDT"
+    # target_stock = "FLOKI-USDT"
+    # target_stock = "OMI-USDT"  # 表现的太差了，应该增加持仓天数限制
+    # target_stock = "DOGE-USDT"
+    # target_stock = "PEPE-USDT"
+
+
+    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    with open(total_path, 'r') as file:
+        long_period_candle = json.load(file)
+
+    long_period_candle = long_period_candle[start_day:end_day]
+    execution_plan(target_stock, long_period_candle)
+
