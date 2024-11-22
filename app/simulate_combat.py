@@ -1,8 +1,6 @@
 # 导入日志配置
 import json
 import logging.config
-import threading
-from datetime import datetime
 
 from utils.logging_config import Logging_dict
 
@@ -43,6 +41,8 @@ class Account_info:
         for attr, value in attributes.items():
             print(f"{attr}: {value}")
         print(self.balance + self.hold_amount * self.hold_price)
+
+        return attributes
 
     def update_info(self, params):
         self.balance = params['balance']
@@ -279,7 +279,7 @@ def execution_plan(target_stock, long_period_candle):
     # print(UpDochianChannel)
     # print(DownDochianChannel)
 
-    from module.draw_trade_picture import draw_picture
+    from candle.draw_trade_picture import draw_picture
 
     draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day, UpDochianChannel,
                  DownDochianChannel, account_info.return_rate_list)
