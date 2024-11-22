@@ -266,6 +266,11 @@ async def main():
 
         # 更新震荡参数
         flag_exit = update_reference_index(target_stock)
+        # attributes = account_info.print_all_info()
+        # for attr, value in attributes.items():
+        #     LOGGING.info(f"{attr}: {value}")
+        # LOGGING.info(account_info.balance + account_info.hold_amount * account_info.hold_price)
+
         if not flag_exit:
             LOGGING.info("index_not_exist!!!!")
             break
@@ -280,7 +285,7 @@ async def main():
                 # 持续监听增量数据
                 while True:
                     try:
-                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
+                        response = await asyncio.wait_for(websocket.recv(), timeout=20)
                         data_dict = json.loads(response)
                         price = data_dict["data"][0]["px"]
                         num = data_dict["data"][0]["sz"]
@@ -302,7 +307,12 @@ async def main():
                                 LOGGING.info(f"到点了 :{current_time} ")
                                 res = send_wx_info("更新策略参数", f"{current_time}", supreme_auth=True)
                                 LOGGING.info(res)
-                                account_info.print_all_info()
+
+                                # 打印账户信息
+                                attributes = account_info.print_all_info()
+                                for attr, value in attributes.items():
+                                    LOGGING.info(f"{attr}: {value}")
+                                LOGGING.info(account_info.balance + account_info.hold_amount * account_info.hold_price)
 
                                 # update_reference_index(target_stock)
 
@@ -317,8 +327,9 @@ async def main():
                             # buy_days.append([today_timestamp, target_market_price])
 
                             amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
+                            LOGGING.info(f"市场价:{price}")
                             total_cost = amount * target_market_price
-                            LOGGING.info(f"amount: {amount}, price: {target_market_price}")
+                            LOGGING.info(f"amount: {amount}, 目标价price: {target_market_price}")
                             LOGGING.info(f"total_cost: {round(total_cost, 3)}")
 
                             account_info.update_info(
@@ -416,18 +427,6 @@ async def main():
                             # sell_empty_days.append([today_timestamp, target_market_price])
                             sell(account_info, target_market_price, today_timestamp=today_timestamp)
 
-                        # # 建仓完成
-                        # if float(price) >= up_Dochian_price and ssb > 0:
-                        #     ssb -= 1
-                        #     asyncio.create_task(handle_private_connection(target_stock, amount,"buy"))
-                        #     LONG_POSITION+=1
-                        #
-                        # if float(price) >= up_Dochian_price+LONG_POSITION*0.5*ATR and LONG_POSITION <= 4:
-                        #     asyncio.create_task(handle_private_connection(target_stock, amount,"buy"))
-                        #     LONG_POSITION+=1
-                        #
-                        # if float(price) <= down_Dochian_price:
-                        #     asyncio.create_task(handle_private_connection(target_stock, amount,"sell"))
 
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
@@ -440,7 +439,6 @@ async def main():
 
                         except Exception as e:
                             LOGGING.info(f"连接关闭，正在重连…… {e}")
-                            # LOGGING.info(e)
                             break
 
         # 重新尝试连接，使用指数退避策略
