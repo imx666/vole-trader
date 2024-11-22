@@ -24,7 +24,7 @@ passphrase = os.getenv('PASSPHRASE')
 from MsgSender.wx_msg import send_wx_info
 
 
-def account(result):
+def show_account(result):
     """账户信息"""
     print("\n")
 
@@ -49,8 +49,10 @@ def account(result):
             "content": content
         }
     }
-    res = send_wx_info(1, 1, custom=custom_dict, supreme_auth=True)
-    print(res)
+
+    if len(data) <= 2:
+        res = send_wx_info(1, 1, custom=custom_dict, supreme_auth=True)
+        print(res)
 
 
 def prepare_login():
@@ -114,7 +116,7 @@ async def main():
                         print("收到增量数据: ", response)
                         response = json.loads(response)
                         if response.get("data"):
-                            account(response)
+                            show_account(response)
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
