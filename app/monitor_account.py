@@ -21,17 +21,25 @@ api_key = os.getenv('API_KEY')
 secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
+
+
+import logging.config
+from utils.logging_config import Logging_dict
+
+logging.config.dictConfig(Logging_dict)
+LOGGING = logging.getLogger("app_01")
+
 from MsgSender.wx_msg import send_wx_info
 
 
 def show_account(result):
     """账户信息"""
-    print("\n")
+    LOGGING.info("\n")
 
     data = result['data'][0]['balData']
-    print("=====================资金用户===========================")
+    LOGGING.info("=====================资金用户===========================")
     # totalEq = round(float(totalEq), 2)
-    # print(f'总资产: {totalEq} 美元')
+    # LOGGING.info(f'总资产: {totalEq} 美元')
 
     title = "账户更新"
     content = f"<font color=\"warning\">{title}</font>"
@@ -39,8 +47,8 @@ def show_account(result):
         currency = item['ccy']
         cashBal = round(float(item['cashBal']), 8)
 
-        # print(f"{currency}, 权益: {cashBal}, 现价: {eqUsd} USDT")
-        print(f"{currency}, 权益: {cashBal}")
+        # LOGGING.info(f"{currency}, 权益: {cashBal}, 现价: {eqUsd} USDT")
+        LOGGING.info(f"{currency}, 权益: {cashBal}")
         content += f"\n>{currency}<font color=\"comment\">权益: {cashBal}</font>"
 
     custom_dict = {
@@ -52,18 +60,18 @@ def show_account(result):
 
     if len(data) <= 2:
         res = send_wx_info(1, 1, custom=custom_dict, supreme_auth=True)
-        print(res)
+        LOGGING.info(res)
 
 
 def prepare_login():
     timestamp = int(time.time())
-    print("timestamp: " + str(timestamp))
+    LOGGING.info(f"timestamp: {str(timestamp)}")
     sign = str(timestamp) + 'GET' + '/users/self/verify'
     total_params = bytes(sign, encoding='utf-8')
     signature = hmac.new(bytes(secret_key, encoding='utf-8'), total_params, digestmod=hashlib.sha256).digest()
     signature = base64.b64encode(signature)
     signature = str(signature, 'utf-8')
-    print("signature = {0}".format(signature))
+    LOGGING.info(f"signature = {signature}")
 
     account_msg = {
         "op": "login",
@@ -95,17 +103,15 @@ async def main():
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
                 account_msg = prepare_login()
-                print("发送登录消息: ", account_msg)
+                LOGGING.info(f"发送登录消息: {account_msg}")
                 await websocket.send(json.dumps(account_msg))
-
-                # 接收并打印登录响应
                 response = await websocket.recv()
-                print("登录响应: ", response)
+                LOGGING.info(f"登录响应: {response}")
 
                 # 发送订阅请求
                 await websocket.send(json.dumps(subscribe_msg))
                 subscribe_response = await websocket.recv()
-                print("订阅响应: ", subscribe_response)
+                LOGGING.info(f"订阅响应: {subscribe_response}")
 
                 # 持续监听增量数据
                 while True:
@@ -113,7 +119,7 @@ async def main():
                         # response = await websocket.recv()
                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
 
-                        print("收到增量数据: ", response)
+                        LOGGING.info(f"收到增量数据: {response}")
                         response = json.loads(response)
                         if response.get("data"):
                             show_account(response)
@@ -122,38 +128,37 @@ async def main():
                         try:
                             await websocket.send('ping')
                             res = await websocket.recv()
-                            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            print(f"{current_time} 收到: {res}")
+                            LOGGING.info(res)
+                            # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            # LOGGING.info(f"{current_time} 收到: {res}")
                             continue
 
                         except Exception as e:
-                            print("连接关闭，正在重连……")
+                            LOGGING.info(f"连接关闭，正在重连…… {e}")
                             break
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print(f"Connection closed: {e}")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            print(f"Reconnecting in {wait_time} seconds...")
+            LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
+            LOGGING.error(f"Connection closed: {e}")
             await asyncio.sleep(wait_time)
 
         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
         except socket.error as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print(f"Connection closed: {e}")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            print(f"Reconnecting in {wait_time} seconds...")
+            LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
+            LOGGING.error(f"Connection closed: {e}")
             await asyncio.sleep(wait_time)
 
         except Exception as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print('其他', e)
+            LOGGING.error(f"{current_time} 连接断开，正在重连……")
+            LOGGING.error(f'其他 {e}')
 
 
 if __name__ == '__main__':
