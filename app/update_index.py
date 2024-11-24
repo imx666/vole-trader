@@ -31,7 +31,7 @@ if __name__ == '__main__':
     target_stock = "LUNC-USDT"
     target_stock = "BTC-USDT"
     # target_stock = "FLOKI-USDT"
-    # target_stock = "OMI-USDT"
+    target_stock = "OMI-USDT"
     # target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
 
@@ -50,17 +50,17 @@ if __name__ == '__main__':
 
 
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    redis_okx.hset(f"stock:{target_stock}", 'update_time', current_time)
-    redis_okx.hset(f"stock:{target_stock}", mapping={'history_max_price': history_max_price, 'history_min_price': history_min_price, 'ATR': ATR})
+    redis_okx.hset(f"common_index:{target_stock}", 'update_time', current_time)
+    redis_okx.hset(f"common_index:{target_stock}", mapping={'history_max_price': history_max_price, 'history_min_price': history_min_price, 'ATR': ATR})
 
 
     # 获取单个字段的值
-    name = redis_okx.hget(f"stock:{target_stock}",'update_time')
+    name = redis_okx.hget(f"common_index:{target_stock}",'update_time')
     name = name.decode()
     print(name)
 
     # 获取整个哈希表的所有字段和值
-    all_info = redis_okx.hgetall(f"stock:{target_stock}")
+    all_info = redis_okx.hgetall(f"common_index:{target_stock}")
 
     # 解码每个键和值
     decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
@@ -71,5 +71,10 @@ if __name__ == '__main__':
     print(ATR)
     print(history_max_price)
     print(history_min_price)
+
+
+
+    target_stock = "OMI-USDT"
+    redis_okx.hset(f"hold_info:{target_stock}", mapping={'risk_rate': 0.01, 'long_position': 0, 'ATR': ATR})
 
 
