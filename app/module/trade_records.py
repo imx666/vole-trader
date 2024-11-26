@@ -55,8 +55,10 @@ Base.metadata.create_all(engine)
 
 
 class TradeRecordManager:
-    def __init__(self):
+    def __init__(self, target_stock, strategy_name):
         self.session = Session()
+        self.target_stock = target_stock
+        self.strategy = strategy_name
 
     def __del__(self):
         self.session.close()
@@ -81,15 +83,17 @@ class TradeRecordManager:
         last_record = self.session.query(TradeRecord).filter(
             TradeRecord.execution_cycle.like(f'{strategy_name}%')
         ).order_by(TradeRecord.create_time.desc()).first()
-        name = last_record.execution_cycle
-        # print(name)
-        return name
+        if last_record:
+            name = last_record.execution_cycle
+            # print(name)
+            return name
+        return None
 
-    def filter_record(self, target_stock, state):
+    def filter_record(self, state):
         record_list = []
         filtered_records = (
             self.session.query(TradeRecord)
-            .filter(TradeRecord.target_stock == target_stock)
+            .filter(TradeRecord.target_stock == self.target_stock)
             .filter(TradeRecord.state == state)
             .all()
         )
@@ -101,12 +105,12 @@ class TradeRecordManager:
 
         return record_list
 
-    def get(self, target_stock, execution_cycle, op):
+    def get(self, execution_cycle, op):
         if op == 'long_position':
             long_position = 0
             filtered_records = (
                 self.session.query(TradeRecord)
-                .filter(TradeRecord.target_stock == target_stock)
+                .filter(TradeRecord.target_stock == self.target_stock)
                 .filter(TradeRecord.execution_cycle == execution_cycle)
                 .all()
             )
@@ -119,11 +123,106 @@ class TradeRecordManager:
                     return 0
             return long_position
 
+        if op == 'total_max_amount':
+            total_max_amount = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    total_max_amount += record.amount
+                if operation == 'close':
+                    raise Exception(f"trade_record实例不存在: {op}")
+            return total_max_amount
+
+        if op == 'total_max_value':
+            total_max_value = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    total_max_value += record.value
+                if operation == 'close':
+                    raise Exception(f"trade_record实例不存在: {op}")
+            return total_max_value
+
+        if op == 'rest_amount':
+            total_amount = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    total_amount += record.amount
+                if operation == 'reduce' and record.state == 'filled':
+                    total_amount -= record.amount
+                if operation == 'close':
+                    raise Exception(f"trade_record实例不存在: {op}")
+            return total_amount
+
+        if op == 'rest_value':
+            total_value = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    total_value += record.value
+                if operation == 'reduce' and record.state == 'filled':
+                    total_value -= record.value
+                if operation == 'close':
+                    raise Exception(f"trade_record实例不存在: {op}")
+            return total_value
+
+        if op == 'sell_times':
+            sell_time = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if operation == 'reduce' and record.state != 'canceled':
+                    sell_time += 1
+                if operation == 'close':
+                    raise Exception(f"trade_record实例不存在: {op}")
+                    # return -1
+            return sell_time
+
         if op == 'open_price':
-            # operation = "build"
-            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == target_stock).filter(
+            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
                 TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
                 TradeRecord.operation == "build").first()
+            if trade_record:
+                open_price = float(trade_record.price)
+                return open_price
+            else:
+                # return 0
+                raise Exception(f"trade_record实例不存在: {op}")
+
+        if op == 'last_hold_price':
+            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
+                TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
+                TradeRecord.operation == "add").order_by(TradeRecord.create_time.desc()).first()
             if trade_record:
                 open_price = float(trade_record.price)
                 return open_price
@@ -134,7 +233,7 @@ class TradeRecordManager:
         """添加一条新的交易记录"""
         trade_record = TradeRecord(
             execution_cycle=kwargs.get('execution_cycle'),
-            target_stock=kwargs.get('target_stock'),
+            target_stock=self.target_stock,
             operation=kwargs.get('operation'),
             state=kwargs.get('state'),
             create_time=kwargs.get('create_time'),
@@ -143,7 +242,7 @@ class TradeRecordManager:
             price=kwargs.get('price'),
             amount=kwargs.get('amount'),
             value=kwargs.get('value'),
-            strategy=kwargs.get('strategy')
+            strategy=self.strategy
         )
         self.session.add(trade_record)
         self.session.commit()
@@ -236,36 +335,48 @@ def list_trade_records(session):
 
 
 if __name__ == "__main__":
-    strategy_name = 'TURTLE'
     strategy_name = 'sb'
+    strategy_name = 'TURTLE'
     client_order_id = 'OMI12345'
+
     target_stock = "BTC"
-    manager = TradeRecordManager()
-    execution_cycle = manager.generate_execution_cycle(strategy_name)
+    target_stock = "OMI-USDT"
+    manager = TradeRecordManager(target_stock, strategy_name)
 
-    timestamp_seconds = time.time()
-    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
 
-    # 将毫秒级时间戳转换为 datetime 对象
-    create_time = datetime.fromtimestamp(timestamp_ms / 1000.0)
+    execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
+    # last_hold_price = manager.get(execution_cycle, "last_hold_price")
+    # last_hold_price = manager.get(execution_cycle, "open_price")
+    # last_hold_price = manager.get(execution_cycle, "long_position")
+    last_hold_price = manager.get(execution_cycle, "sell_times")
+    # last_hold_price = manager.get(execution_cycle, "rest_amount")
+    print(last_hold_price)
 
-    # 添加一条新记录
-    new_trade = manager.add_trade_record(
-        create_time=create_time,
-        execution_cycle=execution_cycle,
-        target_stock=target_stock,
-        operation="BUY",
-        state="FILLED",
-        client_order_id=client_order_id,
-        price=150.0,
-        amount=10,
-        value=1500.0,
-        strategy=strategy_name
-    )
 
-    client_order_id = 'OMI12344'
-    # 更新一条交易记录
-    manager.update_trade_record(client_order_id, state='cancel', amount=1.5)
+    # execution_cycle = manager.generate_execution_cycle(strategy_name)
+    #
+    # timestamp_seconds = time.time()
+    # timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+    #
+    # # 将毫秒级时间戳转换为 datetime 对象
+    # create_time = datetime.fromtimestamp(timestamp_ms / 1000.0)
+    #
+    # # 添加一条新记录
+    # new_trade = manager.add_trade_record(
+    #     create_time=create_time,
+    #     execution_cycle=execution_cycle,
+    #     operation="BUY",
+    #     state="FILLED",
+    #     client_order_id=client_order_id,
+    #     price=150.0,
+    #     amount=10,
+    #     value=1500.0,
+    #     strategy=strategy_name
+    # )
+
+    # client_order_id = 'OMI12344'
+    # # 更新一条交易记录
+    # manager.update_trade_record(client_order_id, state='cancel', amount=1.5)
 
     # # 获取一条交易记录
     # trade_record = get_trade_record(session, 1)
