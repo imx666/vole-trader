@@ -9,13 +9,12 @@ APP_ENV = os.getenv('APP_ENV')
 FEISHU_AUTH_CODE = os.getenv("FEISHU_AUTH_CODE")
 
 
-def send_feishu_info(title, body, custom=None, supreme_auth=False):
+def send_feishu_info(title, body, custom=None, supreme_auth=False, jerry_mouse=False):
     if supreme_auth is False:
         if APP_ENV != "prod":
             return "非生产环境,feishu_msg没有发送权限"
 
-    FEISHU_AUTH_CODE = "11e80563-222f-4792-b745-6709f96e51b8"
-    # FEISHU_AUTH_CODE = "ced1f0db-775a-43e0-8983-a536d14f5ec1"
+    FEISHU_AUTH_CODE = os.getenv("FEISHU_AUTH_CODE_jerry") if jerry_mouse else os.getenv("FEISHU_AUTH_CODE_tom")
 
     api_url = f"https://open.feishu.cn/open-apis/bot/v2/hook/{FEISHU_AUTH_CODE}"
 
@@ -62,7 +61,6 @@ def send_feishu_info(title, body, custom=None, supreme_auth=False):
 
     # 文档：https://open.feishu.cn/community/articles/7271149634339422210
 
-
     payload_json = json.dumps(payload)
     try:
         response = requests.post(api_url, headers=headers, data=payload_json)
@@ -88,9 +86,7 @@ if __name__ == "__main__":
     dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
     load_dotenv(dotenv_path)  # 载入环境变量
 
-    # 载入环境变量
-    load_dotenv(dotenv_path)
-    FEISHU_AUTH_CODE = os.getenv('FEISHU_AUTH_CODE')
+    FEISHU_AUTH_CODE = os.getenv('FEISHU_AUTH_CODE_tom')
     APP_ENV = os.getenv('APP_ENV')
     print(APP_ENV)
     print(FEISHU_AUTH_CODE)
@@ -101,5 +97,5 @@ if __name__ == "__main__":
     #                    "出错学院：健康学院")
     # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # res = send_feishu_info("<ali>: gwt_college_circle", f"[{APP_ENV}]: {current_time}", supreme_auth=True)
-    res = send_feishu_info("校团委验证异常!!!","发布时间:异常!!!\n异常时间:2024-09-14", )
+    res = send_feishu_info("校团委验证异常!!!", "发布时间:异常!!!\n异常时间:2024-09-14", jerry_mouse=True)
     print(res)
