@@ -9,29 +9,72 @@ import json
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-# 绘制蜡烛图的函数
+period = "1D"
+period = "4H"
+# period = "1H"
+
+compensate_dict = {
+    "1D": 1,
+    "4H": 1 / 6,
+    "1H": 1 / 24,
+}
+
+compensate = compensate_dict.get(period, 1)
+
+
 def plot_candlestick(ax, df):
     # 定义价格数据
     up = df[df['close'] >= df['open']]
     down = df[df['close'] < df['open']]
 
     # 绘制上涨的K线（收盘价高于开盘价，绿色）
-    ax.bar(up.index, up['close'] - up['open'], bottom=up['open'], color='green', width=0.8)
-    ax.bar(up.index, up['high'] - up['close'], bottom=up['close'], color='green', width=0.2)
-    ax.bar(up.index, up['low'] - up['open'], bottom=up['open'], color='green', width=0.2)
+    ax.bar(up.index, up['close'] - up['open'], bottom=up['open'], color='green', width=0.8 * compensate)
+    ax.bar(up.index, up['high'] - up['close'], bottom=up['close'], color='green', width=0.2 * compensate)
+    ax.bar(up.index, up['low'] - up['open'], bottom=up['open'], color='green', width=0.2 * compensate)
 
     # 绘制下跌的K线（开盘价高于收盘价，红色）
-    ax.bar(down.index, down['close'] - down['open'], bottom=down['open'], color='red', width=0.8)
-    ax.bar(down.index, down['high'] - down['open'], bottom=down['open'], color='red', width=0.2)
-    ax.bar(down.index, down['low'] - down['close'], bottom=down['close'], color='red', width=0.2)
+    ax.bar(down.index, down['close'] - down['open'], bottom=down['open'], color='red', width=0.8 * compensate)
+    ax.bar(down.index, down['high'] - down['open'], bottom=down['open'], color='red', width=0.2 * compensate)
+    ax.bar(down.index, down['low'] - down['close'], bottom=down['close'], color='red', width=0.2 * compensate)
 
 
-def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=None, end_day=None, UpDochianChannel=None, DownDochianChannel=None, return_rate_list=None):
-    import os
-    from pathlib import Path
-    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+def draw_picture_K(total_path, target_stock, start_day=0, end_day=None):
+    # 读取并处理 K 线数据
+    with open(total_path, 'r') as file:
+        long_period_candle = json.load(file)
 
-    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    if end_day is not None:
+        long_period_candle = long_period_candle[start_day:end_day]
+
+    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
+    df.set_index('timestamp', inplace=True)
+
+    # 创建图形和轴
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # 绘制蜡烛图
+    plot_candlestick(ax1, df)
+
+    # 美化图表
+    plt.legend()
+    # plt.tight_layout()
+
+    # 显示图表
+    plt.show()
+
+
+def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day=0, end_day=None,
+                 UpDochianChannel=None,
+                 DownDochianChannel=None, return_rate_list=None):
+    # import os
+    # from pathlib import Path
+    # BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    #
+    # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    # total_path = os.path.join(BASE_DIR, f"./data/保留4H单位的/{target_stock}.json")
+
     # 读取并处理 K 线数据
     with open(total_path, 'r') as file:
         long_period_candle = json.load(file)
@@ -56,7 +99,6 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
 
     # 设置ax1的y轴范围
     ax1.set_ylim(min_value - 0.5 * delta, max_value * 1.1)  # 上限为最大值的110%，确保顶部也有足够的空间
-
 
     # 绘制蜡烛图
     plot_candlestick(ax1, df)
@@ -112,18 +154,15 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
     ax1.set_xlabel('Date')
     ax1.set_ylabel('Price')
 
-
-
-
     # 回报率
     return_rate_df = pd.DataFrame(return_rate_list, columns=['timestamp', 'return_rate'])
-    return_rate_df['timestamp'] = pd.to_datetime(return_rate_df['timestamp'], unit='ms')# 创建右侧轴
+    return_rate_df['timestamp'] = pd.to_datetime(return_rate_df['timestamp'], unit='ms')  # 创建右侧轴
     ax2 = ax1.twinx()
     # 计算y轴的上下限
     data = return_rate_df['return_rate']
     min_value = data.min()
     max_value = data.max()
-    print(min_value, max_value)
+    # print(min_value, max_value)
 
     # 动态计算y轴的下限，确保y=0这条线与底部有一定的距离
     if min_value >= 0:
@@ -132,7 +171,7 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
         y_min = min_value * 1.5  # 如果有负数，则下限为最小值的110%
 
     y_min = -0.1 if y_min > -0.1 else y_min
-    print(y_min)
+    # print(y_min)
 
     # 设置ax1的y轴范围
     ax2.set_ylim(y_min, 1)  # 上限为最大值的110%，确保顶部也有足够的空间
@@ -149,7 +188,7 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
         color='green',
         alpha=0.6,
         label='Positive Return Rate',
-        width=1.5
+        width=1.5 * compensate
     )
     # 绘制负回报率的柱状图
     ax2.bar(
@@ -158,7 +197,7 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
         color='red',
         alpha=0.6,
         label='Negative Return Rate',
-        width=1.5
+        width=1.5 * compensate
     )
     ax2.axhline(y=0, color='black', linestyle='--', linewidth=1)
 
@@ -172,9 +211,6 @@ def draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day=N
         ax2.text(row['timestamp'], row['return_rate'] - 0.02,  # 在柱子下方一点的位置
                  '{:.2%}'.format(row['return_rate']),
                  ha='center', va='top', color='black', fontsize=5)
-
-
-
 
     # 图例和标题
     ax1.legend(loc='upper left')
@@ -211,7 +247,15 @@ if __name__ == '__main__':
     target_stock = "BTC-USDT"
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
-    target_stock = "DOGE-USDT"
+    # target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
 
-    draw_picture(target_stock, buy_days, sell_days, sell_empty_days)
+    import os
+    from pathlib import Path
+
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    # total_path = os.path.join(BASE_DIR, f"./data/保留4H单位的/{target_stock}.json")
+    # draw_picture(target_stock, buy_days, sell_days, sell_empty_days)
+    draw_picture_K(total_path, target_stock, end_day=100)
