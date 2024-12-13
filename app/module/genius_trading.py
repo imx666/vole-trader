@@ -29,6 +29,10 @@ class LOGGING:
     def info(message):
         print(message)
 
+    @staticmethod
+    def error(message):
+        print(message)
+
 
 def beijing_time(timestamp_ms):
     # 将毫秒时间戳转换为秒时间戳
@@ -64,12 +68,19 @@ class GeniusTrader:
         api_key = os.getenv('API_KEY')
         secret_key = os.getenv('SECRET_KEY')
         passphrase = os.getenv('PASSPHRASE')
-        PROXY_URL = "http://127.0.0.1:7890"
-        # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@198.23.239.134:6540'
-        # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@154.36.110.199:6853'
-
         flag = "0"  # 实盘: 0, 模拟盘: 1
 
+        # api_key = os.getenv('API_KEY_moni')
+        # secret_key = os.getenv('SECRET_KEY_moni')
+        # passphrase = os.getenv('PASSPHRASE_moni')
+        # flag = "1"  # 实盘: 0, 模拟盘: 1
+
+        PROXY_URL = "http://127.0.0.1:7890"
+
+
+
+        # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@198.23.239.134:6540'
+        # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@154.36.110.199:6853'
         self.tradeAPI = Trade.TradeAPI(api_key, secret_key, passphrase, False, flag, proxy=PROXY_URL, debug=False)
         self.accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag, proxy=PROXY_URL, debug=False)
         self.publicDataAPI = PublicData.PublicAPI(flag=flag, proxy=PROXY_URL, debug=False)
@@ -197,14 +208,14 @@ class GeniusTrader:
         #     # LOGGING.info(e)
         #     pass
 
-    def stock_candle(self, custom_stock, after=None):
+    def stock_candle(self, custom_stock, after=None, period='1D'):
         if after is None:
             after = ""
 
         # 获取交易产品历史K线数据
         result = self.marketDataAPI.get_history_candlesticks(
             instId=custom_stock,
-            bar="1D",
+            bar=period,
             after=after,
             # after="1723046400000"
         )
