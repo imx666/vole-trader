@@ -1,0 +1,69 @@
+import time
+import schedule
+import logging.config
+from datetime import datetime
+
+# 导入日志配置
+import logging.config
+from datetime import datetime
+
+from utils.logging_config import Logging_dict
+
+logging.config.dictConfig(Logging_dict)
+LOGGING = logging.getLogger("auto_upload_index")
+
+import redis
+
+from module.genius_trading import GeniusTrader
+from module.redis_url import redis_url
+from module.common_index import get_DochianChannel, get_ATR
+
+genius_trader = GeniusTrader()
+
+
+def update_job():
+    target_stock_li = [
+        "LUNC-USDT",
+        "BTC-USDT",
+        "FLOKI-USDT",
+        "OMI-USDT",
+        "DOGE-USDT",
+        "PEPE-USDT",
+    ]
+
+    for target_stock in target_stock_li:
+        total_candle = genius_trader.stock_candle(target_stock, period="4H")
+        # print(total_candle)
+
+        PERIOD = 3
+        history_max_price, history_min_price = get_DochianChannel(total_candle, PERIOD)
+        ATR = get_ATR(total_candle, PERIOD)
+
+        redis_okx = redis.Redis.from_url(redis_url)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        redis_okx.hset(f"common_index:{target_stock}", 'update_time', current_time)
+        redis_okx.hset(f"common_index:{target_stock}",
+                       mapping={'history_max_price': history_max_price, 'history_min_price': history_min_price,
+                                'ATR': ATR})
+
+        LOGGING.info(f"target_stock:{target_stock}")
+        LOGGING.info(f"history_max_price:{history_max_price}")
+        LOGGING.info(f"history_min_price:{history_min_price}")
+        LOGGING.info(f"ATR:{ATR}\n")
+
+
+
+if __name__ == "__main__":
+
+    update_job()
+
+    # 每天的特定小时执行任务
+    hours_to_run = [0, 4, 8, 12, 16, 20]  # 23点是为了清空当天的尾巴信息
+    LOGGING.info(f"定时任务启动,在每天的{hours_to_run}点执行任务\n")
+    for hour in hours_to_run:
+        schedule.every().day.at(f"{hour:02}:01").do(update_job)
+
+    # 执行定时任务的主循环
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
