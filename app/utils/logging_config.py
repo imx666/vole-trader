@@ -36,8 +36,8 @@ Logging_dict = {
     },
     "handlers": {
         "app_01": logging_config("app_01"),
-        "app_02": logging_config("app_02"),
-        "app_03": logging_config("app_03"),
+        "VoleTrader": logging_config("VoleTrader"),
+        "auto_upload_index": logging_config("auto_upload_index"),
     },
     "loggers": {
         "app_01": {
@@ -45,13 +45,13 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "app_02": {
-            "handlers": ["app_02"],
+        "VoleTrader": {
+            "handlers": ["VoleTrader"],
             "level": "DEBUG",
             "propagate": False,
         },
-        "app_03": {
-            "handlers": ["app_03"],
+        "auto_upload_index": {
+            "handlers": ["auto_upload_index"],
             "level": "DEBUG",
             "propagate": False,
         },
