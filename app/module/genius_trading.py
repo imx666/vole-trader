@@ -75,12 +75,10 @@ class GeniusTrader:
         # passphrase = os.getenv('PASSPHRASE_moni')
         # flag = "1"  # 实盘: 0, 模拟盘: 1
 
-        PROXY_URL = "http://127.0.0.1:7890"
-
-
-
+        # PROXY_URL = "http://127.0.0.1:7890"
         # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@198.23.239.134:6540'
-        # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@154.36.110.199:6853'
+        PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@154.36.110.199:6853'
+
         self.tradeAPI = Trade.TradeAPI(api_key, secret_key, passphrase, False, flag, proxy=PROXY_URL, debug=False)
         self.accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag, proxy=PROXY_URL, debug=False)
         self.publicDataAPI = PublicData.PublicAPI(flag=flag, proxy=PROXY_URL, debug=False)
