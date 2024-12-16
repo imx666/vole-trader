@@ -46,6 +46,18 @@ down_Dochian_price = 0
 SellFlag = 0
 
 
+def compute_amount(operation, hold_info, target_market_price):
+    amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
+    rate = 0.3 if operation == "build" else 0.25
+    expect_max_cost = hold_info.get("init_balance") * rate
+    now_cost = amount * target_market_price
+    if now_cost > expect_max_cost:
+        LOGGING.info("超预算(减少数量)")
+        amount = expect_max_cost / target_market_price
+
+    return amount
+
+
 def show_moment(msg, target_market_price, buyLmt, sellLmt):
     LOGGING.info(msg)
     LOGGING.info(f"target_market_price: {target_market_price}")
@@ -163,13 +175,14 @@ async def main():
                                 # 生成新编号
                                 execution_cycle = sqlManager.generate_execution_cycle(strategy_name)
 
-                                amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
-                                now_cost = amount * target_market_price
-                                expect_max_cost = hold_info.get("init_balance") * 0.3
-                                if now_cost > expect_max_cost:
-                                    LOGGING.info("超预算(减少数量)")
-                                    amount = expect_max_cost / target_market_price
+                                # amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
+                                # now_cost = amount * target_market_price
+                                # expect_max_cost = hold_info.get("init_balance") * 0.25
+                                # if now_cost > expect_max_cost:
+                                #     LOGGING.info("超预算(减少数量)")
+                                #     amount = expect_max_cost / target_market_price
 
+                                amount = compute_amount("build", hold_info, target_market_price)
                                 agent.actual_buy("build", execution_cycle, target_market_price, amount)
                                 # agent.simulate_buy("build", execution_cycle, target_market_price, amount)
 
@@ -188,13 +201,14 @@ async def main():
                             if target_market_price < probable_price:
                                 show_moment("加仓", target_market_price, buyLmt, sellLmt)
 
-                                amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
-                                now_cost = amount * target_market_price
-                                expect_max_cost = hold_info.get("init_balance") * 0.25
-                                if now_cost > expect_max_cost:
-                                    LOGGING.info("超预算(减少数量)")
-                                    amount = expect_max_cost / target_market_price
+                                # amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
+                                # now_cost = amount * target_market_price
+                                # expect_max_cost = hold_info.get("init_balance") * 0.25
+                                # if now_cost > expect_max_cost:
+                                #     LOGGING.info("超预算(减少数量)")
+                                #     amount = expect_max_cost / target_market_price
 
+                                amount = compute_amount("add", hold_info, target_market_price)
                                 agent.actual_buy("add", execution_cycle, target_market_price, amount)
                                 # agent.simulate_buy("add", execution_cycle, target_market_price, amount)
                                 SellFlag = 1
@@ -218,22 +232,22 @@ async def main():
                                 # agent.simulate_sell(execution_cycle, target_market_price, ratio)
                                 continue
 
-                        # 满仓情况
-                        # print(444)
-                        if long_position == 1 + hold_info.get("max_long_position"):
-                            sell_times = sqlManager.get(execution_cycle, "sell_times")
-                            last_hold_price = sqlManager.get(execution_cycle, "last_hold_price")
-                            target_market_price = round(last_hold_price + 0.1 * ATR, 10)
-                            hold_info.pull("target_market_price(sell)", target_market_price)
-
-                            if probable_price < target_market_price and sell_times == hold_info.get("max_sell_times"):
-                                msg = "减仓(+1.5N线, 追加止盈)"
-                                show_moment(msg, target_market_price, buyLmt, sellLmt)
-
-                                ratio = 0.3
-                                agent.actual_sell(execution_cycle, target_market_price, ratio)
-                                # agent.simulate_sell(execution_cycle, target_market_price, ratio)
-                                continue
+                        # # 满仓情况
+                        # # print(444)
+                        # if long_position == 1 + hold_info.get("max_long_position"):
+                        #     sell_times = sqlManager.get(execution_cycle, "sell_times")
+                        #     last_hold_price = sqlManager.get(execution_cycle, "last_hold_price")
+                        #     target_market_price = round(last_hold_price + 0.1 * ATR, 10)
+                        #     hold_info.pull("target_market_price(sell)", target_market_price)
+                        #
+                        #     if probable_price < target_market_price and sell_times == hold_info.get("max_sell_times"):
+                        #         msg = "减仓(+1.5N线, 追加止盈)"
+                        #         show_moment(msg, target_market_price, buyLmt, sellLmt)
+                        #
+                        #         ratio = 0.3
+                        #         agent.actual_sell(execution_cycle, target_market_price, ratio)
+                        #         # agent.simulate_sell(execution_cycle, target_market_price, ratio)
+                        #         continue
 
                         # # 非满仓，保本
                         # # print(555)
@@ -258,12 +272,10 @@ async def main():
                         # print(666)
                         if long_position > 0 and SellFlag == 0:
                             stop_loss_price = round(build_price - 0.5 * ATR, 10)
-                            if probable_price < max(stop_loss_price,
-                                                    down_Dochian_price) and long_position > 0 and SellFlag == 0:
+                            if probable_price < max(stop_loss_price, down_Dochian_price):
                                 target_market_price = max(stop_loss_price, down_Dochian_price)
                                 msg = "平仓max(-0.5N线/唐奇安)"
-                            elif probable_price < min(stop_loss_price,
-                                                      down_Dochian_price) and long_position > 0 and SellFlag == 0:
+                            elif probable_price < min(stop_loss_price, down_Dochian_price):
                                 target_market_price = min(stop_loss_price, down_Dochian_price)
                                 msg = "平仓min(-0.5N线/唐奇安)"
                             else:
@@ -277,11 +289,6 @@ async def main():
                                 ratio = 1
                                 agent.actual_sell(execution_cycle, target_market_price, ratio)
                                 # agent.simulate_sell(execution_cycle, target_market_price, ratio)
-
-
-
-
-
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
