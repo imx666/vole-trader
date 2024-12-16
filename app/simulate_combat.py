@@ -18,7 +18,9 @@ class Account_info:
         self.init_balance = 100
         self.balance = self.init_balance
         self.total_ratio = 1.0
-        self.risk_rate = 0.01
+        # self.risk_rate = 0.01
+        # self.risk_rate = 0.003  # 由于时间周期减小，风险率也要减小,1H
+        self.risk_rate = 0.0025  # 由于时间周期减小，风险率也要减小,4H
         self.total_cost = 0
 
         self.long_position = 0
@@ -39,6 +41,8 @@ class Account_info:
         # 获取类的所有属性及其值
         attributes = vars(self)
         for attr, value in attributes.items():
+            if attr == 'return_rate_list':
+                continue
             print(f"{attr}: {value}")
         print(self.balance + self.hold_amount * self.hold_price)
 
@@ -159,6 +163,12 @@ def execution_plan(target_stock, long_period_candle):
 
             amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
             total_cost = amount * target_market_price
+
+            expect_max_cost = account_info.init_balance * 0.3
+            if total_cost > expect_max_cost:
+                print("超预算(减少数量)")
+                amount = expect_max_cost / target_market_price
+                total_cost = expect_max_cost
             print(f"amount: {amount}, price: {target_market_price}")
             print(f"total_cost: {round(total_cost, 3)}")
 
@@ -187,6 +197,12 @@ def execution_plan(target_stock, long_period_candle):
 
                 amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
                 now_cost = amount * target_market_price
+                expect_max_cost = account_info.init_balance * 0.25
+                if now_cost > expect_max_cost:
+                    print("超预算(减少数量)")
+                    amount = expect_max_cost/target_market_price
+                    now_cost = expect_max_cost
+
                 print(f"amount: {amount}, price: {target_market_price}")
                 print(f"total_cost: {round(now_cost, 3)}")
 
@@ -215,26 +231,26 @@ def execution_plan(target_stock, long_period_candle):
                 print(f"ratio: {ratio}")
                 sell(account_info, target_market_price, ratio=ratio, today_timestamp=today_timestamp)
 
-        position = account_info.long_position
-        target_market_price = round(account_info.hold_price + 0.1 * ATR, 10)
-        # print(f"追加:{target_market_price}")
-        if today_max_price > target_market_price > today_min_price and position > 0 and account_info.sell_times == account_info.max_sell_times and flag == 0:
-            print("减仓(+1.5N线, 追加止盈)")
-            sell_days.append([today_timestamp, target_market_price])
-            sell(account_info, target_market_price, ratio=0.3, today_timestamp=today_timestamp)
+        # position = account_info.long_position
+        # target_market_price = round(account_info.hold_price + 0.1 * ATR, 10)
+        # # print(f"追加:{target_market_price}")
+        # if today_max_price > target_market_price > today_min_price and position > 0 and account_info.sell_times == account_info.max_sell_times and flag == 0:
+        #     print("减仓(+1.5N线, 追加止盈)")
+        #     sell_days.append([today_timestamp, target_market_price])
+        #     sell(account_info, target_market_price, ratio=0.3, today_timestamp=today_timestamp)
 
-        position = account_info.long_position
-        if position > 0 and flag == 0:
-            # 除数不为零
-            hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
-            target_market_price = round(hold_average_price + 0.5 * ATR, 10)
-            # target_market_price = round(hold_average_price, 10)
-            if today_min_price < target_market_price < today_max_price and position > 0:
-                print("平仓(+0N线, 动态追踪止损)")
-                flag = 1
-
-                sell_empty_days.append([today_timestamp, target_market_price])
-                sell(account_info, target_market_price, today_timestamp=today_timestamp)
+        # position = account_info.long_position
+        # if position > 0 and flag == 0:
+        #     # 除数不为零
+        #     hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
+        #     target_market_price = round(hold_average_price + 0.5 * ATR, 10)
+        #     # target_market_price = round(hold_average_price, 10)
+        #     if today_min_price < target_market_price < today_max_price and position > 0:
+        #         print("平仓(+0N线, 动态追踪止损)")
+        #         flag = 1
+        #
+        #         sell_empty_days.append([today_timestamp, target_market_price])
+        #         sell(account_info, target_market_price, today_timestamp=today_timestamp)
 
         # position = account_info.long_position
         # target_market_price = round(account_info.open_price - 0.5 * ATR, 10)
@@ -281,7 +297,7 @@ def execution_plan(target_stock, long_period_candle):
 
     from candle.draw_trade_picture import draw_picture
 
-    draw_picture(target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day, UpDochianChannel,
+    draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day, UpDochianChannel,
                  DownDochianChannel, account_info.return_rate_list)
 
 
@@ -311,19 +327,25 @@ if __name__ == '__main__':
     DownDochianChannel = []
 
     start_day = 250
-    start_day = 150
-    start_day = 50
-    end_day = 300
-    end_day = 350
-    end_day = 400
+    end_day = 1300
+
+    # start_day = 2700-240
+    # end_day = 2700
+
+    start_day = 2700-600
+    end_day = 2700
+
+    start_day = 2300-6*90
+    end_day = -1
 
     os.system("clear")
     target_stock = os.getenv("target_stock")
 
 
 
-    # target_stock = "LUNC-USDT"
-    # target_stock = "BTC-USDT"
+    target_stock = "LUNC-USDT"
+    target_stock = "BTC-USDT"
+    target_stock = "ETH-USDT"
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"  # 表现的太差了，应该增加持仓天数限制
     # target_stock = "DOGE-USDT"
@@ -331,8 +353,12 @@ if __name__ == '__main__':
 
 
     total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}-longtest.json")
+
+    # total_path = os.path.join(BASE_DIR, f"./data/1H/{target_stock}.json")
     with open(total_path, 'r') as file:
         long_period_candle = json.load(file)
+        print(len(long_period_candle))
 
     long_period_candle = long_period_candle[start_day:end_day]
     execution_plan(target_stock, long_period_candle)
