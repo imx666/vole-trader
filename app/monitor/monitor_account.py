@@ -40,7 +40,13 @@ class HoldInfo:
         self.redis_okx = redis.Redis.from_url(redis_url)
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
         # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-        self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
+        # self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
+        self.decoded_data = {}
+        for k, v in all_info.items():
+            if k.decode('utf-8') != "execution_cycle":
+                self.decoded_data[k.decode('utf-8')] = float(v)
+            else:
+                self.decoded_data[k.decode('utf-8')] = v
 
     def newest(self, op):
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
@@ -57,8 +63,12 @@ class HoldInfo:
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
         # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-        self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
-
+        # self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
+        for k, v in all_info.items():
+            if k.decode('utf-8') != "execution_cycle":
+                self.decoded_data[k.decode('utf-8')] = float(v)
+            else:
+                self.decoded_data[k.decode('utf-8')] = v
 
 def update_chain(result):
     data = result['data'][0]['balData']
@@ -70,7 +80,7 @@ def update_chain(result):
             check_state(manager, genius_trader)
 
 
-def check_state(manager, genius_trader, withdraw_order=False):
+def check_state(manager:TradeRecordManager, genius_trader:GeniusTrader, withdraw_order=False):
     # 查询未成交订单并取消
     record_list = manager.filter_record(state="live")
     if not record_list:
@@ -86,6 +96,9 @@ def check_state(manager, genius_trader, withdraw_order=False):
         state = deal_data["state"]
         price = float(price_str)
         amount = float(deal_data["sz"])
+        fee = float(deal_data["fee"])
+        side = deal_data["side"]
+
         if state == "filled" and state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
             fill_time = int(deal_data["fillTime"])
             manager.update_trade_record(
@@ -95,6 +108,7 @@ def check_state(manager, genius_trader, withdraw_order=False):
                 amount=amount,
                 value=round(amount * price, 3),
                 fill_time=datetime.fromtimestamp(fill_time / 1000.0),
+                fee=fee if side == "sell" else None,
             )
         if withdraw_order and state == "live":
             genius_trader.cancel_order(client_order_id=client_order_id)
@@ -107,7 +121,9 @@ def check_state(manager, genius_trader, withdraw_order=False):
 
     # 重置建仓标志位
     if long_position == 1:
-        hold_info.pull("build", 0)
+        hold_info.pull("build_state", 0)
+        build_price = manager.get(execution_cycle, "build_price")
+        hold_info.pull("build_price", build_price)
 
 
 def show_account(result):
