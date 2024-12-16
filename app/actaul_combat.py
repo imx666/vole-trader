@@ -40,6 +40,8 @@ LOGGING = logging.getLogger("app_01")
 
 
 from MsgSender.wx_msg import send_wx_info
+from monitor.monitor_account import prepare_login
+from VoleTrader import load_reference_index
 
 ATR = 999999
 up_Dochian_price = 999999
@@ -132,61 +134,6 @@ def create_order(target_stock, amount, side, price=None):
     return order_msg, client_order_id
 
 
-def prepare_login():
-    timestamp = int(time.time())
-    LOGGING.info(f"timestamp: {str(timestamp)}")
-    sign = str(timestamp) + 'GET' + '/users/self/verify'
-    total_params = bytes(sign, encoding='utf-8')
-    signature = hmac.new(bytes(secret_key, encoding='utf-8'), total_params, digestmod=hashlib.sha256).digest()
-    signature = base64.b64encode(signature)
-    signature = str(signature, 'utf-8')
-    LOGGING.info(f"signature = {signature}")
-
-    account_msg = {
-        "op": "login",
-        "args": [
-            {
-                "apiKey": f'{api_key}',
-                "passphrase": f'{passphrase}',
-                "timestamp": f'{timestamp}',
-                "sign": f'{signature}'
-            }
-        ]
-    }
-
-    return account_msg
-
-
-def update_reference_index(target_stock):
-    from module.redis_url import redis_url
-    redis_okx = redis.Redis.from_url(redis_url)
-
-    # 获取单个字段的值
-    name = redis_okx.hget(f"stock:{target_stock}", 'update_time')
-    if name is None:
-        return 0
-    name = name.decode()
-    LOGGING.info("开始更新每日参数")
-    LOGGING.info(f"参数更新的最后日期: {name}")
-
-    # 获取整个哈希表的所有字段和值
-    all_info = redis_okx.hgetall(f"stock:{target_stock}")
-
-    # 解码每个键和值
-    decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-    # LOGGING.info(decoded_data)
-
-    history_max_price, history_min_price = float(decoded_data['history_max_price']), float(
-        decoded_data['history_min_price'])
-    atr = float(decoded_data['ATR'])
-    LOGGING.info(atr)
-    LOGGING.info(history_max_price)
-    LOGGING.info(history_min_price)
-
-    global ATR, up_Dochian_price, down_Dochian_price
-    ATR, up_Dochian_price, down_Dochian_price = atr, history_max_price, history_min_price
-
-    return 1
 
 
 def contrast_range(now_price, target_market_price):
@@ -265,7 +212,7 @@ async def main():
 
 
         # 更新震荡参数
-        flag_exit = update_reference_index(target_stock)
+        flag_exit = load_reference_index(target_stock)
         # attributes = account_info.print_all_info()
         # for attr, value in attributes.items():
         #     LOGGING.info(f"{attr}: {value}")
@@ -314,7 +261,7 @@ async def main():
                                     LOGGING.info(f"{attr}: {value}")
                                 LOGGING.info(account_info.balance + account_info.hold_amount * account_info.hold_price)
 
-                                # update_reference_index(target_stock)
+                                # load_reference_index(target_stock)
 
                         now_price = float(price)
                         today_timestamp = int(time.time())
@@ -476,7 +423,7 @@ if __name__ == '__main__':
     # LOGGING.info(ATR)
     #
     # target_stock = "LUNC-USDT"
-    # flag_exit = update_reference_index(target_stock)
+    # flag_exit = load_reference_index(target_stock)
     # if not flag_exit:
     #     LOGGING.info("index_not_exist!!!!")
     #
