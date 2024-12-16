@@ -28,36 +28,22 @@ import logging.config
 from utils.logging_config import Logging_dict
 
 logging.config.dictConfig(Logging_dict)
-LOGGING = logging.getLogger("app_01")
+LOGGING = logging.getLogger("VoleTrader")
 
 from MsgSender.wx_msg import send_wx_info
+from MsgSender.feishu_msg import send_feishu_info
 from module.redis_url import redis_url
 from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
+from module.trade_assistant import TradeAssistant
+from monitor.monitor_account import check_state
+from monitor.monitor_account import HoldInfo
+from monitor.monitor_account import prepare_login
 
 ATR = 999999
 up_Dochian_price = 999999
 down_Dochian_price = 0
-
-
-def update_hold_info(target_stock, key, value):
-    redis_okx = redis.Redis.from_url(redis_url)
-    redis_okx.hset(f"hold_info:{target_stock}", key, value)
-
-
-def get_hold_info(target_stock):
-    redis_okx = redis.Redis.from_url(redis_url)
-    # 获取整个哈希表的所有字段和值
-    all_info = redis_okx.hgetall(f"hold_info:{target_stock}")
-
-    # 解码每个键和值
-    # decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-    decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
-    for attr, value in decoded_data.items():
-        print(f"{attr}: {value}")
-
-    # LOGGING.info(decoded_data)
-    return decoded_data
+SellFlag = 0
 
 
 def show_moment(msg, target_market_price, buyLmt, sellLmt):
@@ -66,19 +52,19 @@ def show_moment(msg, target_market_price, buyLmt, sellLmt):
     LOGGING.info(f"buyLmt: {buyLmt}, sellLmt: {sellLmt}")
 
 
-def actual_sell(manager, execution_cycle, ratio, genius_trader, target_market_price):
-    total_max_amount = manager.get(execution_cycle, "total_max_amount")
+def actual_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader, target_market_price):
+    total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
     target_amount = round(total_max_amount * ratio, 3)
-    rest_amount = manager.get(execution_cycle, "rest_amount")
+    rest_amount = sqlManager.get(execution_cycle, "rest_amount")
     amount = rest_amount if rest_amount < target_amount else target_amount
     operation = "close" if rest_amount < target_amount else "reduce"
 
-    client_order_id, timestamp_ms = genius_trader.sell_order(amount=amount, price=target_market_price)
+    client_order_id, timestamp_ms = geniusTrader.sell_order(amount=amount, price=target_market_price)
 
     # 添加一条新记录
-    manager.add_trade_record(
+    sqlManager.add_trade_record(
         create_time=datetime.fromtimestamp(timestamp_ms / 1000.0),
-        execution_cycle=manager.generate_execution_cycle(strategy_name),
+        execution_cycle=execution_cycle,
         operation=operation,
         client_order_id=client_order_id,
         price=target_market_price,
@@ -87,12 +73,35 @@ def actual_sell(manager, execution_cycle, ratio, genius_trader, target_market_pr
     )
 
 
-def actual_buy(operation, hold_info, manager, execution_cycle, genius_trader, target_market_price):
+def simulate_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader, target_market_price):
+    total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
+    target_amount = round(total_max_amount * ratio, 3)
+    rest_amount = sqlManager.get(execution_cycle, "rest_amount")
+    amount = rest_amount if rest_amount < target_amount else target_amount
+    operation = "close" if rest_amount < target_amount else "reduce"
+
+    timestamp_seconds = time.time()
+    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+    sort_name = target_stock.split("-")[0]
+    client_order_id = f"{sort_name}{timestamp_ms}"
+    # 添加一条新记录
+    sqlManager.add_trade_record(
+        create_time=datetime.fromtimestamp(timestamp_ms / 1000.0),
+        execution_cycle=execution_cycle,
+        operation=operation,
+        client_order_id=client_order_id,
+        price=target_market_price,
+        amount=amount,
+        value=round(target_market_price * amount, 3),
+    )
+
+
+def actual_buy(operation, hold_info, sqlManager, execution_cycle, geniusTrader, target_market_price):
     amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
-    client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
+    client_order_id, timestamp_ms = geniusTrader.buy_order(amount=amount, price=target_market_price)
 
     # 添加一条新记录
-    manager.add_trade_record(
+    sqlManager.add_trade_record(
         create_time=datetime.fromtimestamp(timestamp_ms / 1000.0),
         execution_cycle=execution_cycle,
         operation=operation,
@@ -103,34 +112,23 @@ def actual_buy(operation, hold_info, manager, execution_cycle, genius_trader, ta
     )
 
 
-def check_state(manager, genius_trader):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-    res = send_wx_info("更新策略参数", f"{current_time}", supreme_auth=True)
-    LOGGING.info(res)
+def simulate_buy(operation, hold_info, sqlManager, execution_cycle, geniusTrader, target_market_price):
+    amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
 
-    # 查询未成交订单并取消
-    record_list = manager.filter_record(state="live")
-    if record_list:
-        for client_order_id in record_list:
-            result = genius_trader.execution_result(client_order_id=client_order_id)
-            LOGGING.info(result)
-            deal_data = result['data'][0]
-            price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
-            state = deal_data["state"]
-            price = float(price_str)
-            amount = float(deal_data["sz"])
-            if state == "filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
-                fill_time = int(deal_data["fillTime"])
-                manager.update_trade_record(
-                    client_order_id,
-                    state=state,
-                    price=price,
-                    value=round(amount * price, 3),
-                    fill_time=datetime.fromtimestamp(fill_time / 1000.0),
-                )
-            else:
-                genius_trader.cancel_order(client_order_id=client_order_id)
-                manager.update_trade_record(client_order_id, state="canceled")
+    timestamp_seconds = time.time()
+    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+    sort_name = target_stock.split("-")[0]
+    client_order_id = f"{sort_name}{timestamp_ms}"
+    # 添加一条新记录
+    sqlManager.add_trade_record(
+        create_time=datetime.fromtimestamp(timestamp_ms / 1000.0),
+        execution_cycle=execution_cycle,
+        operation=operation,
+        client_order_id=client_order_id,
+        price=target_market_price,
+        amount=amount,
+        value=round(amount * target_market_price, 3),
+    )
 
 
 def load_reference_index(target_stock):
@@ -164,37 +162,36 @@ def load_reference_index(target_stock):
     return 1
 
 
-def prepare_login():
-    timestamp = int(time.time())
-    LOGGING.info(f"timestamp: {str(timestamp)}")
-    sign = str(timestamp) + 'GET' + '/users/self/verify'
-    total_params = bytes(sign, encoding='utf-8')
-    signature = hmac.new(bytes(secret_key, encoding='utf-8'), total_params, digestmod=hashlib.sha256).digest()
-    signature = base64.b64encode(signature)
-    signature = str(signature, 'utf-8')
-    LOGGING.info(f"signature = {signature}")
+def timed_task(sqlManager, geniusTrader):
+    bj_tz = timezone(timedelta(hours=8))
+    now_bj = datetime.now().astimezone(bj_tz)
+    # today = now_bj.day  # 当前月份的第几天
+    hour_of_day = now_bj.hour  # 第几时
+    minute = now_bj.minute  # 第几分
 
-    account_msg = {
-        "op": "login",
-        "args": [
-            {
-                "apiKey": f'{api_key}',
-                "passphrase": f'{passphrase}',
-                "timestamp": f'{timestamp}',
-                "sign": f'{signature}'
-            }
-        ]
-    }
+    if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
+        global DayStamp, SellFlag
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        if DayStamp is not None and current_time == DayStamp:
+            return
 
-    return account_msg
+        res = send_wx_info("读取最新策略参数", f"{current_time}", supreme_auth=True)
+        LOGGING.info(res)
+
+        load_reference_index(target_stock)
+        DayStamp = current_time
+        redis_okx.hset(f"common_index:{target_stock}", 'last_read_time', current_time)
+        LOGGING.info(f"到点了 :{current_time} ")
+
+        # 更新hold_info
+        hold_info.newest_all()
+
+        # 取消未成交的挂单
+        check_state(sqlManager, geniusTrader, withdraw_order=True)
+        SellFlag = 0
 
 
 async def main():
-    day_li = []
-    hold_info = get_hold_info(target_stock)
-    genius_trader = GeniusTrader(target_stock)
-    manager = TradeRecordManager(target_stock, strategy_name)
-
     while True:
         reconnect_attempts = 0
 
@@ -220,126 +217,140 @@ async def main():
                 # 持续监听增量数据
                 while True:
                     try:
-                        bj_tz = timezone(timedelta(hours=8))
-                        now_bj = datetime.now().astimezone(bj_tz)
-                        # today = now_bj.day  # 当前月份的第几天
-                        hour_of_day = now_bj.hour  # 第几时
-                        minute = now_bj.minute  # 第几分
 
-                        if hour_of_day == 8 and minute == 1:
-                            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-                            if current_time in day_li:
-                                continue
-
-                            flag = 0
-                            # if current_time not in day_li:
-                            load_reference_index(target_stock)
-                            day_li.append(current_time)
-                            LOGGING.info(f"到点了 :{current_time} ")
-                            check_state(manager, genius_trader)
-
+                        # 更新策略参数
+                        timed_task(sqlManager, geniusTrader)
 
                         # response = await websocket.recv()
                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
-                        # LOGGING.info(f"收到增量数据: {response}")
                         data_dict = json.loads(response)
                         buyLmt = float(data_dict["data"][0]["buyLmt"])
                         sellLmt = float(data_dict["data"][0]["sellLmt"])
                         # LOGGING.info(f"buyLmt: {buyLmt}, sellLmt: {sellLmt}")
 
-                        execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
-                        long_position = manager.get(execution_cycle, "long_position")
-                        target_market_price = up_Dochian_price
-                        print(111)
-                        if target_market_price < buyLmt and long_position == 0:
-                            flag = 1
-                            execution_cycle = manager.generate_execution_cycle(strategy_name)  # 生成新编号
-                            show_moment("建仓", target_market_price, buyLmt, sellLmt)
-                            actual_buy("build", hold_info, manager, execution_cycle, genius_trader,
-                                       target_market_price)
+                        # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
+                        # execution_cycle = hold_info.newest("execution_cycle")
+                        long_position = hold_info.newest("long_position")
+                        # print(111)
+                        if long_position == 0:
+                            target_market_price = up_Dochian_price
+                            if hold_info.newest("build_state") == 0 and target_market_price < buyLmt:
+                                SellFlag = 1
+                                execution_cycle = sqlManager.generate_execution_cycle(strategy_name)  # 生成新编号
+                                show_moment("建仓", target_market_price, buyLmt, sellLmt)
 
+                                amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
+                                agent.actual_buy("build", execution_cycle, target_market_price, amount)
+                                # actual_buy("build", hold_info, sqlManager, execution_cycle, geniusTrader,
+                                #            target_market_price)
+                                # simulate_buy("build", hold_info, sqlManager, execution_cycle, geniusTrader,
+                                #              target_market_price)
+                                hold_info.pull("build_state", 1)
+                                hold_info.pull("execution_cycle", execution_cycle)  # 同步新编号
 
-                        long_position = manager.get(execution_cycle, "long_position")
-                        print(222)
+                        long_position = hold_info.newest("long_position")
+                        # print(222)
                         if 0 < long_position <= hold_info.get("max_long_position"):
-                            open_price = manager.get(execution_cycle, "open_price")
-                            target_market_price = round(open_price + long_position * 0.5 * ATR, 10)
+                            build_price = hold_info.newest("build_price")
+                            target_market_price = round(build_price + long_position * 0.5 * ATR, 10)
+                            hold_info.pull("target_market_price(add)", target_market_price)
                             if target_market_price < buyLmt:
-                                flag = 1
+                                SellFlag = 1
                                 show_moment("加仓", target_market_price, buyLmt, sellLmt)
-                                actual_buy("add", hold_info, manager, execution_cycle, genius_trader,
-                                           target_market_price)
+                                amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
+                                agent.actual_buy("add", execution_cycle, target_market_price, amount)
+                                # actual_buy("add", hold_info, sqlManager, execution_cycle, geniusTrader,
+                                #            target_market_price)
+                                # simulate_buy("add", hold_info, sqlManager, execution_cycle, geniusTrader,
+                                #              target_market_price)
 
+                        # ============= SELL =========SELL===========SELL========
 
                         # 卖出
-                        long_position = manager.get(execution_cycle, "long_position")
-                        print(333)
+                        long_position = hold_info.newest("long_position")
+                        # print(333)
                         if long_position == 1 + hold_info.get("max_long_position"):
-                            open_price = manager.get(execution_cycle, "open_price")
-                            sell_times = manager.get(execution_cycle, "sell_times")
-                            target_market_price = round(open_price + (0.5 * sell_times + 2) * ATR, 10)
+                            build_price = hold_info.newest("build_price")
+                            sell_times = sqlManager.get(execution_cycle, "sell_times")
+                            target_market_price = round(build_price + (0.5 * sell_times + 2) * ATR, 10)
+                            hold_info.pull("target_market_price(sell)", target_market_price)
                             if sellLmt < target_market_price and sell_times < hold_info.get("max_sell_times"):
                                 msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
                                 show_moment(msg, target_market_price, buyLmt, sellLmt)
 
                                 ratio = 0.3 if sell_times <= 1 else 0.2
-                                actual_sell(manager, execution_cycle, ratio, genius_trader,
-                                            target_market_price)
+                                agent.actual_sell(execution_cycle, target_market_price, ratio)
+                                # actual_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #             target_market_price)
+                                # simulate_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #               target_market_price)
 
-                        long_position = manager.get(execution_cycle, "long_position")
-                        print(444)
+                        long_position = hold_info.newest("long_position")
+                        # print(444)
                         if long_position == 1 + hold_info.get("max_long_position"):
-                            sell_times = manager.get(execution_cycle, "sell_times")
-                            last_hold_price = manager.get(execution_cycle, "last_hold_price")
+                            sell_times = sqlManager.get(execution_cycle, "sell_times")
+                            last_hold_price = sqlManager.get(execution_cycle, "last_hold_price")
                             target_market_price = round(last_hold_price + 0.1 * ATR, 10)
+                            hold_info.pull("target_market_price(sell)", target_market_price)
                             if sellLmt < target_market_price and sell_times == hold_info.get("max_sell_times"):
                                 # 满仓状态下
                                 msg = "减仓(+1.5N线, 追加止盈)"
                                 show_moment(msg, target_market_price, buyLmt, sellLmt)
 
                                 ratio = 0.3
-                                actual_sell(manager, execution_cycle, ratio, genius_trader,
-                                            target_market_price)
+                                agent.actual_sell(execution_cycle, target_market_price, ratio)
+                                # actual_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #             target_market_price)
+                                # simulate_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #               target_market_price)
 
-                        long_position = manager.get(execution_cycle, "long_position")
-                        print(555)
-                        if long_position > 0 and flag == 0:
+                        long_position = hold_info.newest("long_position")
+                        # print(555)
+                        if long_position > 0 and SellFlag == 0:
                             # 除数不为零
-                            rest_value = manager.get(execution_cycle, "rest_value")  # 累计数量
-                            rest_amount = manager.get(execution_cycle, "rest_amount")  # 累计数量
+                            rest_value = sqlManager.get(execution_cycle, "rest_value")  # 累计数量
+                            rest_amount = sqlManager.get(execution_cycle, "rest_amount")  # 累计数量
                             hold_average_price = rest_value / rest_amount
 
                             target_market_price = round(hold_average_price + 0.5 * ATR, 10)
                             if sellLmt < target_market_price:
-                                flag = 1
+                                SellFlag = 1
                                 msg = "平仓(+0N线, 动态追踪止损)"  # 保本
                                 show_moment(msg, target_market_price, buyLmt, sellLmt)
 
                                 ratio = 1
-                                actual_sell(manager, execution_cycle, ratio, genius_trader,
-                                            target_market_price)
+                                agent.actual_sell(execution_cycle, target_market_price, ratio)
+                                # actual_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #             target_market_price)
+                                # simulate_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #               target_market_price)
 
-                        long_position = manager.get(execution_cycle, "long_position")
-                        if long_position > 0 and flag == 0:
-                            stop_loss_price = round(open_price - 0.5 * ATR, 10)
+                        long_position = hold_info.newest("long_position")
+                        if long_position > 0 and SellFlag == 0:
+                            stop_loss_price = round(build_price - 0.5 * ATR, 10)
                             # 根据条件选择target_market_price
-                            if sellLmt < max(stop_loss_price, down_Dochian_price) and long_position > 0 and flag == 0:
+                            if sellLmt < max(stop_loss_price,
+                                             down_Dochian_price) and long_position > 0 and SellFlag == 0:
                                 target_market_price = max(stop_loss_price, down_Dochian_price)
                                 msg = "平仓max(-0.5N线/唐奇安)"
-                            elif sellLmt < min(stop_loss_price, down_Dochian_price) and long_position > 0 and flag == 0:
+                            elif sellLmt < min(stop_loss_price,
+                                               down_Dochian_price) and long_position > 0 and SellFlag == 0:
                                 target_market_price = min(stop_loss_price, down_Dochian_price)
                                 msg = "平仓min(-0.5N线/唐奇安)"
                             else:
                                 target_market_price = None
 
                             if target_market_price is not None:
-                                flag = 1
+                                SellFlag = 1
                                 show_moment(msg, target_market_price, buyLmt, sellLmt)
                                 LOGGING.info(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
 
                                 ratio = 1
-                                actual_sell(manager, execution_cycle, ratio, genius_trader,
-                                            target_market_price)
+                                agent.actual_sell(execution_cycle, target_market_price, ratio)
+                                # actual_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #             target_market_price)
+                                # simulate_sell(hold_info, sqlManager, execution_cycle, ratio, geniusTrader,
+                                #               target_market_price)
 
 
 
@@ -349,7 +360,7 @@ async def main():
                         try:
                             await websocket.send('ping')
                             res = await websocket.recv()
-                            LOGGING.info(res)
+                            LOGGING.info(f"收到: {res}")
                             # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             # LOGGING.info(f"{current_time} 收到: {res}")
                             continue
@@ -385,10 +396,10 @@ async def main():
 if __name__ == '__main__':
     strategy_name = 'TURTLE'
 
-    target_stock = "LUNC-USDT"
+    # target_stock = "LUNC-USDT"
     target_stock = "BTC-USDT"
     # target_stock = "FLOKI-USDT"
-    target_stock = "OMI-USDT"
+    # target_stock = "OMI-USDT"
     # target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
 
@@ -402,6 +413,21 @@ if __name__ == '__main__':
             }
         ]
     }
+
+    redis_okx = redis.Redis.from_url(redis_url)
+    last_read_time = redis_okx.hget(f"common_index:{target_stock}", 'last_read_time')
+    DayStamp = last_read_time.decode() if last_read_time is not None else None
+
+    geniusTrader = GeniusTrader(target_stock)
+
+    sqlManager = TradeRecordManager(target_stock, strategy_name)
+    execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
+
+    hold_info = HoldInfo(target_stock)
+    hold_info.pull("execution_cycle", execution_cycle)
+
+    agent = TradeAssistant(sqlManager, geniusTrader)
+
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
