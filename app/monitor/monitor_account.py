@@ -8,6 +8,7 @@ from datetime import datetime
 import asyncio
 import os
 import websockets
+import redis
 
 from pathlib import Path
 from dotenv import load_dotenv
@@ -21,8 +22,6 @@ api_key = os.getenv('API_KEY')
 secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
-
-
 import logging.config
 from utils.logging_config import Logging_dict
 
@@ -30,6 +29,85 @@ logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("app_01")
 
 from MsgSender.wx_msg import send_wx_info
+from module.redis_url import redis_url
+from module.genius_trading import GeniusTrader
+from module.trade_records import TradeRecordManager
+
+
+class HoldInfo:
+    def __init__(self, target_stock):
+        self.target_stock = target_stock
+        self.redis_okx = redis.Redis.from_url(redis_url)
+        all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
+        # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
+        self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
+
+    def newest(self, op):
+        target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
+        # return target_op.decode() if target_op is not None else None
+        return float(target_op.decode()) if target_op is not None else None
+
+    def get(self, op):
+        target_op = self.decoded_data.get(op, None)
+        return target_op
+
+    def pull(self, key, value):
+        self.redis_okx.hset(f"hold_info:{self.target_stock}", key, value)
+
+    def newest_all(self):
+        all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
+        # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
+        self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
+
+
+def update_chain(result):
+    data = result['data'][0]['balData']
+
+    for item in data:
+        currency = item['ccy']
+
+        if currency == target_stock:
+            check_state(manager, genius_trader)
+
+
+def check_state(manager, genius_trader, withdraw_order=False):
+    # 查询未成交订单并取消
+    record_list = manager.filter_record(state="live")
+    if not record_list:
+        return
+
+    time.sleep(10)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
+    for client_order_id in record_list:
+        # 查询执行结果
+        result = genius_trader.execution_result(client_order_id=client_order_id)
+        LOGGING.info(result)
+        deal_data = result['data'][0]
+        price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
+        state = deal_data["state"]
+        price = float(price_str)
+        amount = float(deal_data["sz"])
+        if state == "filled" and state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
+            fill_time = int(deal_data["fillTime"])
+            manager.update_trade_record(
+                client_order_id,
+                state=state,
+                price=price,
+                amount=amount,
+                value=round(amount * price, 3),
+                fill_time=datetime.fromtimestamp(fill_time / 1000.0),
+            )
+        if withdraw_order and state == "live":
+            genius_trader.cancel_order(client_order_id=client_order_id)
+            manager.update_trade_record(client_order_id, state="canceled")
+
+    execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
+    # execution_cycle = hold_info.newest("execution_cycle")
+    long_position = manager.get(execution_cycle, "long_position")
+    hold_info.pull("long_position", long_position)
+
+    # 重置建仓标志位
+    if long_position == 1:
+        hold_info.pull("build", 0)
 
 
 def show_account(result):
@@ -122,7 +200,8 @@ async def main():
                         LOGGING.info(f"收到增量数据: {response}")
                         response = json.loads(response)
                         if response.get("data"):
-                            show_account(response)
+                            # show_account(response)
+                            update_chain(response)
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
@@ -157,10 +236,15 @@ async def main():
 
         except Exception as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            LOGGING.error(f"{current_time} 连接断开，正在重连……")
-            LOGGING.error(f'其他 {e}')
+            LOGGING.error(f"{current_time} 连接断开，不重新连接，请检查……其他 {e}")
 
 
 if __name__ == '__main__':
+    strategy_name = 'TURTLE'
+    target_stock = "BTC-USDT"
+    hold_info = HoldInfo(target_stock)
+    genius_trader = GeniusTrader(target_stock)
+    manager = TradeRecordManager(target_stock, strategy_name)
+
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
