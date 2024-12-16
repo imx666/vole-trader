@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 import hmac
 import hashlib
@@ -13,9 +14,14 @@ import redis
 from pathlib import Path
 from dotenv import load_dotenv
 
+# 锁定系统运行路径
 project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-# project_path = os.getcwd()  # 此脚本的运行的"启动"路径
-dotenv_path = os.path.join(project_path, '../.env.dev')  # 指定.env.dev文件的路径
+dotenv_path = os.path.join(project_path, '../')
+sys.path.append(dotenv_path)
+print(dotenv_path)
+
+
+dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
 load_dotenv(dotenv_path)  # 载入环境变量
 
 api_key = os.getenv('API_KEY')
@@ -38,26 +44,26 @@ class HoldInfo:
     def __init__(self, target_stock):
         self.target_stock = target_stock
         self.redis_okx = redis.Redis.from_url(redis_url)
-        all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
-        # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-        # self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
         self.decoded_data = {}
-        for k, v in all_info.items():
-            if k.decode('utf-8') != "execution_cycle":
-                self.decoded_data[k.decode('utf-8')] = float(v)
-            else:
-                self.decoded_data[k.decode('utf-8')] = v
+        self.newest_all()
+
 
     def newest(self, op):
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
         # return target_op.decode() if target_op is not None else None
         return float(target_op.decode()) if target_op is not None else None
 
-    def get(self, op):
-        target_op = self.decoded_data.get(op, None)
-        return target_op
+    def get(self, key):
+        target_value = self.decoded_data.get(key, None)
+        return target_value
 
     def pull(self, key, value):
+        target_value = self.decoded_data.get(key, None)
+
+        # 一样的就不用上传
+        if target_value == value:
+            return
+
         self.redis_okx.hset(f"hold_info:{self.target_stock}", key, value)
 
     def newest_all(self):
@@ -75,21 +81,24 @@ def update_chain(result):
 
     for item in data:
         currency = item['ccy']
+        sort_name = target_stock.split('-')[0]
 
-        if currency == target_stock:
-            check_state(manager, genius_trader)
+        if currency == sort_name:
+            check_state(sqlManager, geniusTrader)
 
 
-def check_state(manager:TradeRecordManager, genius_trader:GeniusTrader, withdraw_order=False):
+def check_state(sqlManager:TradeRecordManager, geniusTrader:GeniusTrader, withdraw_order=False):
+    LOGGING.info("更新状态")
     # 查询未成交订单并取消
-    record_list = manager.filter_record(state="live")
+    record_list = sqlManager.filter_record(state="live")
+    LOGGING.info("无未成交订单")
     if not record_list:
         return
 
     time.sleep(10)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
     for client_order_id in record_list:
         # 查询执行结果
-        result = genius_trader.execution_result(client_order_id=client_order_id)
+        result = geniusTrader.execution_result(client_order_id=client_order_id)
         LOGGING.info(result)
         deal_data = result['data'][0]
         price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
@@ -99,9 +108,9 @@ def check_state(manager:TradeRecordManager, genius_trader:GeniusTrader, withdraw
         fee = float(deal_data["fee"])
         side = deal_data["side"]
 
-        if state == "filled" and state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
+        if state == "filled" or state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
             fill_time = int(deal_data["fillTime"])
-            manager.update_trade_record(
+            sqlManager.update_trade_record(
                 client_order_id,
                 state=state,
                 price=price,
@@ -111,19 +120,16 @@ def check_state(manager:TradeRecordManager, genius_trader:GeniusTrader, withdraw
                 fee=fee if side == "sell" else None,
             )
         if withdraw_order and state == "live":
-            genius_trader.cancel_order(client_order_id=client_order_id)
-            manager.update_trade_record(client_order_id, state="canceled")
+            geniusTrader.cancel_order(client_order_id=client_order_id)
+            sqlManager.update_trade_record(client_order_id, state="canceled")
 
-    execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
-    # execution_cycle = hold_info.newest("execution_cycle")
-    long_position = manager.get(execution_cycle, "long_position")
+    execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
+    long_position = sqlManager.get(execution_cycle, "long_position")
     hold_info.pull("long_position", long_position)
 
     # 重置建仓标志位
-    if long_position == 1:
-        hold_info.pull("build_state", 0)
-        build_price = manager.get(execution_cycle, "build_price")
-        hold_info.pull("build_price", build_price)
+    if long_position == 0:
+        hold_info.pull("build_price", 0)
 
 
 def show_account(result):
@@ -183,15 +189,7 @@ def prepare_login():
 
 
 async def main():
-    # 订阅账户频道的消息
-    subscribe_msg = {
-        "op": "subscribe",
-        "args": [
-            {
-                "channel": "balance_and_position",
-            }
-        ]
-    }
+
     while True:
         reconnect_attempts = 0
         try:
@@ -223,7 +221,7 @@ async def main():
                         try:
                             await websocket.send('ping')
                             res = await websocket.recv()
-                            LOGGING.info(res)
+                            LOGGING.info(f"收到: {res}")
                             # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             # LOGGING.info(f"{current_time} 收到: {res}")
                             continue
@@ -259,8 +257,19 @@ if __name__ == '__main__':
     strategy_name = 'TURTLE'
     target_stock = "BTC-USDT"
     hold_info = HoldInfo(target_stock)
-    genius_trader = GeniusTrader(target_stock)
-    manager = TradeRecordManager(target_stock, strategy_name)
-
+    geniusTrader = GeniusTrader(target_stock)
+    sqlManager = TradeRecordManager(target_stock, strategy_name)
+    check_state(sqlManager, geniusTrader)
+    
+    # 订阅账户频道的消息
+    subscribe_msg = {
+        "op": "subscribe",
+        "args": [
+            {
+                "channel": "balance_and_position",
+            }
+        ]
+    }
+    
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
