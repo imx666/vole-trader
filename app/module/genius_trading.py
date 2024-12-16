@@ -354,6 +354,7 @@ class GeniusTrader:
 
             state = deal_data["state"]
             state = "已成交" if state == "filled" else state
+            state = "部分成交" if state == "partially_filled" else state
             state = "等待成交" if state == "live" else state
             state = "已撤单" if state == "canceled" else state
 
@@ -379,7 +380,7 @@ class GeniusTrader:
             #     LOGGING.info(result)
         return pending_list
 
-    def execution_result(self, result_dict=None, client_order_id=None):
+    def execution_result(self, result_dict=None, client_order_id=None, target_and_ordId=[]):
         """执行结果"""
         LOGGING.info("\n")
 
@@ -388,9 +389,21 @@ class GeniusTrader:
             client_order_id = result_dict['data'][0]["clOrdId"]
             target_stock = client_order_id[:-13] + "-USDT"
             # result = self.tradeAPI.get_order(instId=target_stock, ordId=order_id)
-        else:
+            result = self.tradeAPI.get_order(instId=target_stock, clOrdId=client_order_id)
+
+
+        elif client_order_id is not None:
             target_stock = client_order_id[:-13] + "-USDT"
-        result = self.tradeAPI.get_order(instId=target_stock, clOrdId=client_order_id)
+            result = self.tradeAPI.get_order(instId=target_stock, clOrdId=client_order_id)
+
+            
+        elif target_and_ordId is not []:
+            target_stock=target_and_ordId[0]
+            result = self.tradeAPI.get_order(instId=target_stock, ordId=target_and_ordId[1])
+
+        else:
+            return None
+            # result = self.tradeAPI.get_order(instId=target_stock, clOrdId=client_order_id)
 
         # LOGGING.info(result)
 
@@ -400,9 +413,11 @@ class GeniusTrader:
         price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
         price = float(price_str)
         amount = float(deal_data["sz"])
+        fee = float(deal_data["fee"])
 
         state = deal_data["state"]
         state = "已成交" if state == "filled" else state
+        state = "部分成交" if state == "partially_filled" else state
         state = "等待成交" if state == "live" else state
         state = "已撤单" if state == "canceled" else state
 
@@ -416,6 +431,8 @@ class GeniusTrader:
         LOGGING.info(f"委托价格: {price_str}")
         LOGGING.info(f"委托数量: {amount}")
         LOGGING.info(f"共{side}: {round(price * amount, 3)} USDT")
+        if side == "卖出":
+            LOGGING.info(f"手续费: {round(fee, 10)} USDT")
         LOGGING.info(f"创建时间: {create_time}")
         LOGGING.info(f"成交时间: {fill_time}")
 
@@ -450,10 +467,10 @@ if __name__ == '__main__':
     # amount = genius_trader.stock_handle_info(target_stock)
     # print(f"amount: {amount}")
 
-    # 买入
-    amount = 2200
-    target_market_price = 0.00012345
-    client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
+    # # 买入
+    # amount = 2200
+    # target_market_price = 0.00012345
+    # client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
 
     # # 添加一条新记录
     # manager.add_trade_record(
@@ -474,8 +491,8 @@ if __name__ == '__main__':
     # # 撤单
     # genius_trader.cancel_order(target_stock, client_order_id="OMI1732363988494")
 
-    # 查询未成交订单
-    genius_trader.pending_order(target_stock)
+    # # 查询未成交订单
+    # genius_trader.pending_order(target_stock)
 
     # 查看订单执行结果
-    # genius_trader.execution_result(result_dict)
+    genius_trader.execution_result(target_and_ordId=["OMI-USDT","2006379750208077824"])
