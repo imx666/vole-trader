@@ -175,13 +175,6 @@ async def main():
                                 # 生成新编号
                                 execution_cycle = sqlManager.generate_execution_cycle(strategy_name)
 
-                                # amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
-                                # now_cost = amount * target_market_price
-                                # expect_max_cost = hold_info.get("init_balance") * 0.25
-                                # if now_cost > expect_max_cost:
-                                #     LOGGING.info("超预算(减少数量)")
-                                #     amount = expect_max_cost / target_market_price
-
                                 amount = compute_amount("build", hold_info, target_market_price)
                                 agent.actual_buy("build", execution_cycle, target_market_price, amount)
                                 # agent.simulate_buy("build", execution_cycle, target_market_price, amount)
@@ -200,13 +193,6 @@ async def main():
                             hold_info.pull("target_market_price(add)", target_market_price)
                             if target_market_price < probable_price:
                                 show_moment("加仓", target_market_price, buyLmt, sellLmt)
-
-                                # amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / ATR, 5)
-                                # now_cost = amount * target_market_price
-                                # expect_max_cost = hold_info.get("init_balance") * 0.25
-                                # if now_cost > expect_max_cost:
-                                #     LOGGING.info("超预算(减少数量)")
-                                #     amount = expect_max_cost / target_market_price
 
                                 amount = compute_amount("add", hold_info, target_market_price)
                                 agent.actual_buy("add", execution_cycle, target_market_price, amount)
@@ -231,42 +217,6 @@ async def main():
                                 agent.actual_sell(execution_cycle, target_market_price, ratio)
                                 # agent.simulate_sell(execution_cycle, target_market_price, ratio)
                                 continue
-
-                        # # 满仓情况
-                        # # print(444)
-                        # if long_position == 1 + hold_info.get("max_long_position"):
-                        #     sell_times = sqlManager.get(execution_cycle, "sell_times")
-                        #     last_hold_price = sqlManager.get(execution_cycle, "last_hold_price")
-                        #     target_market_price = round(last_hold_price + 0.1 * ATR, 10)
-                        #     hold_info.pull("target_market_price(sell)", target_market_price)
-                        #
-                        #     if probable_price < target_market_price and sell_times == hold_info.get("max_sell_times"):
-                        #         msg = "减仓(+1.5N线, 追加止盈)"
-                        #         show_moment(msg, target_market_price, buyLmt, sellLmt)
-                        #
-                        #         ratio = 0.3
-                        #         agent.actual_sell(execution_cycle, target_market_price, ratio)
-                        #         # agent.simulate_sell(execution_cycle, target_market_price, ratio)
-                        #         continue
-
-                        # # 非满仓，保本
-                        # # print(555)
-                        # if long_position > 0 and SellFlag == 0:
-                        #     # 除数不为零
-                        #     rest_value = sqlManager.get(execution_cycle, "rest_value")  # 累计数量
-                        #     rest_amount = sqlManager.get(execution_cycle, "rest_amount")  # 累计数量
-                        #     hold_average_price = rest_value / rest_amount
-                        #
-                        #     target_market_price = round(hold_average_price + 0.5 * ATR, 10)
-                        #     if sellLmt < target_market_price:
-                        #         SellFlag = 1
-                        #         msg = "平仓(+0N线, 动态追踪止损)"
-                        #         show_moment(msg, target_market_price, buyLmt, sellLmt)
-                        #
-                        #         ratio = 1
-                        #         agent.actual_sell(execution_cycle, target_market_price, ratio)
-                        #         # agent.simulate_sell(execution_cycle, target_market_price, ratio)
-                        #         continue
 
                         # 止损
                         # print(666)
