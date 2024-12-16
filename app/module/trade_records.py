@@ -2,7 +2,7 @@ import time
 # import datetime
 from datetime import datetime
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Numeric
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -15,43 +15,57 @@ class TradeRecord(Base):
     __tablename__ = 'trade_records'
 
     id = Column(Integer, primary_key=True)
-    strategy = Column(String)  # 使用策略
-    execution_cycle = Column(String)  # 执行周期的唯一编号
-    target_stock = Column(String)
-    operation = Column(String)  # 操作类型，买入或卖出
-    state = Column(String, default='live')  # 订单状态，如未成交、部分成交、已成交等
+    strategy = Column(String(255))  # 使用策略
+    execution_cycle = Column(String(255))  # 执行周期的唯一编号
+    target_stock = Column(String(25))
+    operation = Column(String(25))  # 操作类型，买入或卖出
+    state = Column(String(25), default='live')  # 订单状态，如未成交、部分成交、已成交等
     create_time = Column(DateTime)
     fill_time = Column(DateTime)
-    client_order_id = Column(String)  # 客户端订单ID
-    amount = Column(Float)  # 数量，使用 Float 类型
-    price = Column(Float)  # 价格，使用 Float 类型
+    client_order_id = Column(String(255))  # 客户端订单ID
+    # amount = Column(Numeric(16, 10))  # 数量，使用 Float 类型
+    amount = Column(Numeric(16, 7))  # 数量，使用 Float 类型
+    price = Column(Numeric(16, 10))  # 价格，使用 Float 类型
     value = Column(Float)  # 成交金额，也建议使用 Float 类型
+    fee = Column(Numeric(16, 7))  # 价格，使用 Float 类型
+
 
     def __repr__(self):
         return f"<TradeRecord(id={self.id}, execution_cycle='{self.execution_cycle}', target_stock='{self.target_stock}', operation='{self.operation}', " \
                f"state='{self.state}', create_time='{self.create_time}', fill_time='{self.fill_time}', " \
                f"client_order_id='{self.client_order_id}', price={self.price}, amount={self.amount}, " \
-               f"value={self.value}, strategy='{self.strategy}')>"
+               f"value={self.value}, fee={self.fee}, strategy='{self.strategy}')>"
 
 
-from pathlib import Path
+# from pathlib import Path
+#
+# BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# print(BASE_DIR)
+#
+# # 数据库连接配置
+# # DATABASE_URL = 'sqlite:///trades.db'
+# DATABASE_URL = f'sqlite:///{BASE_DIR}/data/trades.db'  # 这里使用 SQLite 作为示例，你可以根据需要更改
+# print(DATABASE_URL)
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-print(BASE_DIR)
+# # 创建数据库引擎
+# engine = create_engine(DATABASE_URL)
 
-# 数据库连接配置
-# DATABASE_URL = 'sqlite:///trades.db'
-DATABASE_URL = f'sqlite:///{BASE_DIR}/data/trades.db'  # 这里使用 SQLite 作为示例，你可以根据需要更改
-print(DATABASE_URL)
+# # 创建会话工厂
+# Session = sessionmaker(bind=engine)
 
-# 创建数据库引擎
-engine = create_engine(DATABASE_URL)
+# # 创建数据表
+# Base.metadata.create_all(engine)
 
-# 创建会话工厂
-Session = sessionmaker(bind=engine)
 
-# 创建数据表
-Base.metadata.create_all(engine)
+
+DATABASE_URL = 'mysql+pymysql://root:123456@172.155.0.3:3306/trading_db'
+engine = create_engine(DATABASE_URL, pool_recycle=3600)
+Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 创建所有定义的表
+Base.metadata.create_all(bind=engine)
+
+
 
 
 class TradeRecordManager:
@@ -116,8 +130,8 @@ class TradeRecordManager:
             )
             for record in filtered_records:
                 operation = record.operation
-                # if (operation == 'build' or operation == 'add') and record.state == 'filled':
-                if (operation == 'build' or operation == 'add') and record.state != 'canceled':
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                # if (operation == 'build' or operation == 'add') and record.state != 'canceled':
                     long_position += 1
                 if operation == 'close':
                     return 0
@@ -201,14 +215,14 @@ class TradeRecordManager:
             )
             for record in filtered_records:
                 operation = record.operation
-                if operation == 'reduce' and record.state != 'canceled':
+                if operation == 'reduce' and record.state != 'canceled':  # 可能部分成交
                     sell_time += 1
                 if operation == 'close':
                     raise Exception(f"trade_record实例不存在: {op}")
                     # return -1
             return sell_time
 
-        if op == 'open_price':
+        if op == 'build_price':
             trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
                 TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
                 TradeRecord.operation == "build").first()
@@ -242,6 +256,7 @@ class TradeRecordManager:
             price=kwargs.get('price'),
             amount=kwargs.get('amount'),
             value=kwargs.get('value'),
+            fee=kwargs.get('fee'),
             strategy=self.strategy
         )
         self.session.add(trade_record)
@@ -344,35 +359,35 @@ if __name__ == "__main__":
     manager = TradeRecordManager(target_stock, strategy_name)
 
 
-    execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
+    # execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
     # last_hold_price = manager.get(execution_cycle, "last_hold_price")
     # last_hold_price = manager.get(execution_cycle, "open_price")
     # last_hold_price = manager.get(execution_cycle, "long_position")
-    last_hold_price = manager.get(execution_cycle, "sell_times")
+    # last_hold_price = manager.get(execution_cycle, "sell_times")
     # last_hold_price = manager.get(execution_cycle, "rest_amount")
-    print(last_hold_price)
+    # print(last_hold_price)
 
 
-    # execution_cycle = manager.generate_execution_cycle(strategy_name)
-    #
-    # timestamp_seconds = time.time()
-    # timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
-    #
-    # # 将毫秒级时间戳转换为 datetime 对象
-    # create_time = datetime.fromtimestamp(timestamp_ms / 1000.0)
-    #
-    # # 添加一条新记录
-    # new_trade = manager.add_trade_record(
-    #     create_time=create_time,
-    #     execution_cycle=execution_cycle,
-    #     operation="BUY",
-    #     state="FILLED",
-    #     client_order_id=client_order_id,
-    #     price=150.0,
-    #     amount=10,
-    #     value=1500.0,
-    #     strategy=strategy_name
-    # )
+    execution_cycle = manager.generate_execution_cycle(strategy_name)
+
+    timestamp_seconds = time.time()
+    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+
+    # 将毫秒级时间戳转换为 datetime 对象
+    create_time = datetime.fromtimestamp(timestamp_ms / 1000.0)
+
+    # 添加一条新记录
+    new_trade = manager.add_trade_record(
+        create_time=create_time,
+        execution_cycle=execution_cycle,
+        operation="BUY",
+        state="FILLED",
+        client_order_id=client_order_id,
+        price=150.0,
+        amount=10,
+        value=1500.0,
+        fee=0.001
+    )
 
     # client_order_id = 'OMI12344'
     # # 更新一条交易记录
