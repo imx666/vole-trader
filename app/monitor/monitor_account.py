@@ -47,11 +47,15 @@ class HoldInfo:
         self.decoded_data = {}
         self.newest_all()
 
-
     def newest(self, op):
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
         # return target_op.decode() if target_op is not None else None
-        return float(target_op.decode()) if target_op is not None else None
+        target_value = target_op.decode()
+        if op != "execution_cycle":
+            return float(target_value)
+        else:
+            return target_value
+        # return float(target_op.decode()) if target_op is not None else None
 
     def get(self, key):
         target_value = self.decoded_data.get(key, None)
@@ -65,6 +69,7 @@ class HoldInfo:
             return
 
         self.redis_okx.hset(f"hold_info:{self.target_stock}", key, value)
+        self.newest_all()
 
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
