@@ -29,6 +29,7 @@ def update_job():
         "OMI-USDT",
         "DOGE-USDT",
         "PEPE-USDT",
+        "ETH-USDT",
     ]
 
     for target_stock in target_stock_li:
