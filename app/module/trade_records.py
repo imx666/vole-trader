@@ -69,7 +69,7 @@ Base.metadata.create_all(bind=engine)
 
 
 class TradeRecordManager:
-    def __init__(self, target_stock, strategy_name):
+    def __init__(self, target_stock, strategy_name=None):
         self.session = Session()
         self.target_stock = target_stock
         self.strategy = strategy_name
@@ -217,8 +217,9 @@ class TradeRecordManager:
                 operation = record.operation
                 if operation == 'reduce' and record.state != 'canceled':  # 可能部分成交
                     sell_time += 1
-                if operation == 'close':
-                    raise Exception(f"trade_record实例不存在: {op}")
+                if operation == 'close' and record.state != 'canceled':
+                    return 0
+                    # raise Exception(f"trade_record实例不存在: {op}")
                     # return -1
             return sell_time
 
