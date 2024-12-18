@@ -20,7 +20,6 @@ dotenv_path = os.path.join(project_path, '../')
 sys.path.append(dotenv_path)
 print(dotenv_path)
 
-
 dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
 load_dotenv(dotenv_path)  # 载入环境变量
 
@@ -51,10 +50,12 @@ class HoldInfo:
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
         # return target_op.decode() if target_op is not None else None
         target_value = target_op.decode()
-        if op != "execution_cycle":
-            return float(target_value)
-        else:
+        if op == "execution_cycle":
             return target_value
+        elif op == "tradeFlag":
+            return target_value
+        else:
+            return float(target_value)
         # return float(target_op.decode()) if target_op is not None else None
 
     def get(self, key):
@@ -76,42 +77,73 @@ class HoldInfo:
         # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
         # self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
         for k, v in all_info.items():
-            if k.decode('utf-8') != "execution_cycle":
-                self.decoded_data[k.decode('utf-8')] = float(v)
-            else:
+            if k.decode('utf-8') == "execution_cycle":
                 self.decoded_data[k.decode('utf-8')] = v
+            elif k.decode('utf-8') == "tradeFlag":
+                self.decoded_data[k.decode('utf-8')] = v
+            else:
+                self.decoded_data[k.decode('utf-8')] = float(v)
+
 
 def update_chain(result):
     data = result['data'][0]['balData']
 
     for item in data:
         currency = item['ccy']
-        sort_name = target_stock.split('-')[0]
+        # sort_name = target_stock.split('-')[0]
+        hold_stock = currency + "-USDT"
+        # LOGGING.info(hold_stock)
 
-        if currency == sort_name:
-            check_state(sqlManager, geniusTrader)
+        target_stock_li = [
+            "BTC-USDT",
+            "ETH-USDT",
+            "DOGE-USDT",
+            "FLOKI-USDT",
+            # "LUNC-USDT",
+            # "OMI-USDT",
+            # "PEPE-USDT",
+        ]
+
+        if hold_stock in target_stock_li:
+            check_state(hold_stock, sqlManager, hold_info, geniusTrader)
 
 
-def check_state(sqlManager:TradeRecordManager, geniusTrader:GeniusTrader, withdraw_order=False):
-    LOGGING.info("更新状态")
+def check_state(hold_stock, sqlManager: TradeRecordManager, hold_info: HoldInfo, geniusTrader: GeniusTrader,
+                withdraw_order=False):
+    LOGGING.info(f"更新状态: {hold_stock}")
+    # sqlManager = TradeRecordManager(hold_stock)
+
+    sqlManager.target_stock = hold_stock
+    hold_info.target_stock = hold_stock
+    geniusTrader.target_stock = hold_stock
+
     # 查询未成交订单并取消
     record_list = sqlManager.filter_record(state="live")
-    LOGGING.info("无未成交订单")
     if not record_list:
+        LOGGING.info("无未成交订单")
         return
+    # hold_info = HoldInfo(hold_stock)
+    # geniusTrader = GeniusTrader(hold_stock)
 
-    time.sleep(10)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
+    time.sleep(5)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
     for client_order_id in record_list:
         # 查询执行结果
         result = geniusTrader.execution_result(client_order_id=client_order_id)
+
         LOGGING.info(result)
         deal_data = result['data'][0]
         price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
         state = deal_data["state"]
         price = float(price_str)
         amount = float(deal_data["sz"])
+        value = amount * price
         fee = float(deal_data["fee"])
         side = deal_data["side"]
+        if side == "buy":
+            amount = amount + fee  # fee的值是负数，所以用+
+            fee = -fee * price  # 买入时，手续费是按照标的物计算的
+        if side == "sell":
+            value = value + fee
 
         if state == "filled" or state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
             fill_time = int(deal_data["fillTime"])
@@ -120,21 +152,28 @@ def check_state(sqlManager:TradeRecordManager, geniusTrader:GeniusTrader, withdr
                 state=state,
                 price=price,
                 amount=amount,
-                value=round(amount * price, 3),
+                value=value,
                 fill_time=datetime.fromtimestamp(fill_time / 1000.0),
-                fee=fee if side == "sell" else None,
+                fee=fee,
             )
+        if state == "canceled":
+            sqlManager.update_trade_record(client_order_id, state="canceled")
         if withdraw_order and state == "live":
             geniusTrader.cancel_order(client_order_id=client_order_id)
             sqlManager.update_trade_record(client_order_id, state="canceled")
 
-    execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
+    # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
+    execution_cycle = hold_info.get("execution_cycle")
+
     long_position = sqlManager.get(execution_cycle, "long_position")
     hold_info.pull("long_position", long_position)
 
-    # 重置建仓标志位
-    if long_position == 0:
-        hold_info.pull("build_price", 0)
+    sell_times = sqlManager.get(execution_cycle, "sell_times")
+    hold_info.pull("sell_times", sell_times)
+
+    # # 重置建仓标志位
+    # if long_position == 0:
+    #     hold_info.pull("build_price", 0)
 
 
 def show_account(result):
@@ -194,7 +233,6 @@ def prepare_login():
 
 
 async def main():
-
     while True:
         reconnect_attempts = 0
         try:
@@ -259,13 +297,14 @@ async def main():
 
 
 if __name__ == '__main__':
-    strategy_name = 'TURTLE'
-    target_stock = "BTC-USDT"
+
+    # target_stock = "BTC-USDT"
+    # target_stock = "ETH-USDT"
+    target_stock = "DOGE-USDT"
+    sqlManager = TradeRecordManager(target_stock, strategy_name='TURTLE')
     hold_info = HoldInfo(target_stock)
     geniusTrader = GeniusTrader(target_stock)
-    sqlManager = TradeRecordManager(target_stock, strategy_name)
-    check_state(sqlManager, geniusTrader)
-    
+
     # 订阅账户频道的消息
     subscribe_msg = {
         "op": "subscribe",
@@ -275,6 +314,6 @@ if __name__ == '__main__':
             }
         ]
     }
-    
+
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
