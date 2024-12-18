@@ -28,6 +28,8 @@ class TradeRecord(Base):
     price = Column(Numeric(16, 10))  # 价格，使用 Float 类型
     value = Column(Float)  # 成交金额，也建议使用 Float 类型
     fee = Column(Numeric(16, 7))  # 价格，使用 Float 类型
+    # remark = Column(String(255))  # 使用策略
+
 
 
     def __repr__(self):
@@ -205,6 +207,24 @@ class TradeRecordManager:
                     raise Exception(f"trade_record实例不存在: {op}")
             return total_value
 
+        if op == 'balance_delta':
+            total_value = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.strategy == self.strategy)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                # print(record.value)
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    total_value -= record.value
+                if (operation == 'reduce' or operation == 'close') and record.state == 'filled':
+                    total_value += record.value
+
+            return total_value
+
         if op == 'sell_times':
             sell_time = 0
             filtered_records = (
@@ -224,6 +244,17 @@ class TradeRecordManager:
             return sell_time
 
         if op == 'build_price':
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                if record.operation == 'close' and record.state == 'filled':
+                    raise Exception(f"trade_record: 此执行编号已存在close操作，请启用新的执行编号")
+                    # return 0
+
             trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
                 TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
                 TradeRecord.operation == "build").first()
@@ -231,8 +262,8 @@ class TradeRecordManager:
                 open_price = float(trade_record.price)
                 return open_price
             else:
-                # return 0
-                raise Exception(f"trade_record实例不存在: {op}")
+                return 0
+                # raise Exception(f"trade_record实例不存在: {op}")
 
         if op == 'last_hold_price':
             trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
@@ -250,7 +281,7 @@ class TradeRecordManager:
             execution_cycle=kwargs.get('execution_cycle'),
             target_stock=self.target_stock,
             operation=kwargs.get('operation'),
-            state=kwargs.get('state'),
+            # state=kwargs.get('state'),
             create_time=kwargs.get('create_time'),
             fill_time=kwargs.get('fill_time'),
             client_order_id=kwargs.get('client_order_id'),
