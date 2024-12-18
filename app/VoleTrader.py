@@ -194,7 +194,7 @@ async def main():
                             target_market_price = up_Dochian_price
                             if target_market_price < probable_price and hold_info.newest("build_price") == 0:
                                 # 生成新编号
-                                execution_cycle = sqlManager.generate_execution_cycle(strategy_name)
+                                execution_cycle = sqlManager.generate_execution_cycle()
                                 # 计算目标数量
                                 amount = compute_amount("build", hold_info, target_market_price)
                                 # 买入

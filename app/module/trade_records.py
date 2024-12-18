@@ -71,7 +71,7 @@ Base.metadata.create_all(bind=engine)
 
 
 class TradeRecordManager:
-    def __init__(self, target_stock, strategy_name=None):
+    def __init__(self, target_stock, strategy_name):
         self.session = Session()
         self.target_stock = target_stock
         self.strategy = strategy_name
@@ -79,7 +79,7 @@ class TradeRecordManager:
     def __del__(self):
         self.session.close()
 
-    def generate_execution_cycle(self, strategy_name):
+    def generate_execution_cycle(self):
         """生成唯一的 execution_cycle 编号"""
         today = datetime.now().strftime('%Y%m%d')
         last_record = self.session.query(TradeRecord).filter(
