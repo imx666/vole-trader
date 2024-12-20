@@ -9,7 +9,6 @@ import websockets
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
 from module.redis_url import redis_url
-from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 from module.trade_assistant import TradeAssistant
 from monitor.monitor_account import check_state
@@ -281,7 +280,8 @@ async def main():
                         # 未满仓,加仓
                         if 0 < long_position <= hold_info.get("max_long_position"):
                             # print(222)
-                            # 计算目标价格
+                            if len(price_dict['add_price_list(ideal)']) == 0:
+                                continue
                             target_market_price = price_dict['add_price_list(ideal)'][0]
                             if target_market_price < probable_price:
                                 if not trade_auth("sell"):
@@ -299,9 +299,10 @@ async def main():
 
                         # 满仓情况,逐步卖出
                         # print(333)
-                        if long_position == hold_info.get("max_long_position") and sell_times < hold_info.get(
+                        if long_position == hold_info.get("max_long_position") and sell_times <= hold_info.get(
                                 "max_sell_times"):
-                            # 计算目标价格
+                            if len(price_dict['reduce_price_list(ideal)']) == 0:
+                                continue
                             target_market_price = price_dict['reduce_price_list(ideal)'][0]
                             if probable_price < target_market_price:
                                 if not trade_auth("sell"):
@@ -333,13 +334,14 @@ async def main():
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
+                            LOGGING.info(f"发送ping")
                             await websocket.send('ping')
                             res = await websocket.recv()
                             LOGGING.info(f"收到: {res}")
                             continue
 
                         except Exception as e:
-                            LOGGING.info(f"连接关闭，正在重连…… {e}")
+                            LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
                             break
 
         # 重新尝试连接，使用指数退避策略
