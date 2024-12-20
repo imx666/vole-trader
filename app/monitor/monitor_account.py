@@ -38,22 +38,21 @@ from module.redis_url import redis_url
 from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 
-
-
 origin_str_list = [
-            "execution_cycle",
-            "tradeFlag",
-            "平仓价(-0.5N线)",
-            "add_price_list(ideal)",
-            "reduce_price_list(ideal)",
-        ]
+    "execution_cycle",
+    "tradeFlag",
+    "平仓价(-0.5N线)",
+    "add_price_list(ideal)",
+    "reduce_price_list(ideal)",
+]
 
 origin_int_list = [
-            "max_long_position",
-            "long_position",
-            "max_sell_times",
-            "sell_times",
-        ]
+    "max_long_position",
+    "long_position",
+    "max_sell_times",
+    "sell_times",
+]
+
 
 class HoldInfo:
     def __init__(self, target_stock):
@@ -62,10 +61,12 @@ class HoldInfo:
         self.decoded_data = {}
         self.newest_all()
 
-
     def newest(self, op):
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
         # return target_op.decode() if target_op is not None else None
+        if target_op is None:
+            raise Exception(f"HoldInfo: redis: 键'{op}'不存在")
+
         target_value = target_op.decode()
 
         if op in origin_str_list:
@@ -347,13 +348,13 @@ async def main():
 
 
 if __name__ == '__main__':
-
     # target_stock = "BTC-USDT"
     # target_stock = "ETH-USDT"
-    target_stock = "DOGE-USDT"
-    sqlManager = TradeRecordManager(target_stock, strategy_name='TURTLE')
-    hold_info = HoldInfo(target_stock)
-    geniusTrader = GeniusTrader(target_stock)
+    # target_stock = "DOGE-USDT"
+
+    # sqlManager = TradeRecordManager(target_stock, strategy_name='TURTLE')
+    # hold_info = HoldInfo(target_stock)
+    # geniusTrader = GeniusTrader(target_stock)
 
     # 订阅账户频道的消息
     subscribe_msg = {
