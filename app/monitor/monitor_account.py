@@ -53,6 +53,26 @@ origin_int_list = [
     "sell_times",
 ]
 
+# 订阅账户频道的消息
+subscribe_msg = {
+    "op": "subscribe",
+    "args": [
+        {
+            "channel": "balance_and_position",
+        }
+    ]
+}
+
+target_stock_li = [
+    "BTC-USDT",
+    "ETH-USDT",
+    "DOGE-USDT",
+    "FLOKI-USDT",
+    # "LUNC-USDT",
+    # "OMI-USDT",
+    # "PEPE-USDT",
+]
+
 
 class HoldInfo:
     def __init__(self, target_stock):
@@ -126,22 +146,12 @@ def update_chain(result):
         hold_stock = currency + "-USDT"
         # LOGGING.info(hold_stock)
 
-        target_stock_li = [
-            "BTC-USDT",
-            "ETH-USDT",
-            "DOGE-USDT",
-            "FLOKI-USDT",
-            # "LUNC-USDT",
-            # "OMI-USDT",
-            # "PEPE-USDT",
-        ]
-
         if hold_stock in target_stock_li:
             check_state(hold_stock)
 
 
 def check_state(hold_stock, withdraw_order=False):
-    global sqlManager, hold_info, geniusTrader
+    global sqlManager, geniusTrader
     LOGGING.info(f"更新状态: {hold_stock}")
 
     sqlManager.target_stock = hold_stock
@@ -348,23 +358,6 @@ async def main():
 
 
 if __name__ == '__main__':
-    # target_stock = "BTC-USDT"
-    # target_stock = "ETH-USDT"
-    # target_stock = "DOGE-USDT"
-
-    # sqlManager = TradeRecordManager(target_stock, strategy_name='TURTLE')
-    # hold_info = HoldInfo(target_stock)
-    # geniusTrader = GeniusTrader(target_stock)
-
-    # 订阅账户频道的消息
-    subscribe_msg = {
-        "op": "subscribe",
-        "args": [
-            {
-                "channel": "balance_and_position",
-            }
-        ]
-    }
 
     # 争对此问题！！！
     # 连接断开，不重新连接，请检查……其他 timed out during handshake
