@@ -1,6 +1,14 @@
 from datetime import datetime
 import time
 
+from module.genius_trading import GeniusTrader
+from module.trade_records import TradeRecordManager
+
+# 交易api
+geniusTrader = GeniusTrader("Assistant")
+
+# 数据库记录
+sqlManager = TradeRecordManager("Assistant")
 
 class LOGGING:
     @staticmethod
@@ -13,9 +21,15 @@ class LOGGING:
 
 
 class TradeAssistant:
-    def __init__(self, sqlManager, geniusTrader, trade_type):
-        self.sqlManager = sqlManager
+    # def __init__(self, sqlManager, geniusTrader, trade_type):
+    def __init__(self, strategy_name, target_stock, trade_type):
+        global geniusTrader, sqlManager
+        sqlManager.strategy = strategy_name
+        sqlManager.target_stock = target_stock
+        geniusTrader.target_stock = target_stock
+
         self.geniusTrader = geniusTrader
+        self.sqlManager = sqlManager
         self.trade_type = trade_type
         self.buyLmt = None
         self.sellLmt = None
@@ -31,7 +45,12 @@ class TradeAssistant:
 
     def sell(self, execution_cycle, target_market_price, ratio, remark=None):
         total_max_amount = self.sqlManager.get(execution_cycle, "total_max_amount")
-        target_amount = round(total_max_amount * ratio, 3)
+        total_max_amount = float(total_max_amount)
+        # if ratio == 1:
+        #     amount = total_max_amount
+        #     operation = "close"
+        # else:
+        target_amount = total_max_amount * ratio
         rest_amount = self.sqlManager.get(execution_cycle, "rest_amount")
         amount = rest_amount if rest_amount < target_amount else target_amount
         operation = "close" if rest_amount < target_amount else "reduce"
@@ -72,7 +91,7 @@ class TradeAssistant:
             client_order_id=client_order_id,
             price=target_market_price,
             amount=amount,
-            value=round(amount * target_market_price, 3),
+            value=round(target_market_price * amount, 3),
         )
 
     def simulate(self, execution_cycle, operation, target_market_price, amount):
