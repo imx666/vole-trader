@@ -39,6 +39,7 @@ from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 
 
+
 origin_str_list = [
             "execution_cycle",
             "tradeFlag",
@@ -135,26 +136,32 @@ def update_chain(result):
         ]
 
         if hold_stock in target_stock_li:
-            check_state(hold_stock, sqlManager, hold_info, geniusTrader)
+            # check_state(hold_stock, sqlManager, hold_info, geniusTrader)
+            check_state(hold_stock)
 
 
 # def check_state(hold_stock, sqlManager: TradeRecordManager, hold_info: HoldInfo, geniusTrader: GeniusTrader,
 #                 withdraw_order=False):
 def check_state(hold_stock, withdraw_order=False):
+    global sqlManager, hold_info, geniusTrader
     LOGGING.info(f"更新状态: {hold_stock}")
     # sqlManager = TradeRecordManager(hold_stock)
 
     sqlManager.target_stock = hold_stock
-    hold_info.target_stock = hold_stock
+    # hold_info.target_stock = hold_stock
     geniusTrader.target_stock = hold_stock
+    # 持仓信息
+    hold_info = HoldInfo(hold_stock)
 
     # 查询未成交订单并取消
     record_list = sqlManager.filter_record(state="live")
     if not record_list:
-        LOGGING.info("无未成交订单")
+        LOGGING.info("无未同步订单")
         return
     # hold_info = HoldInfo(hold_stock)
     # geniusTrader = GeniusTrader(hold_stock)
+    num = len(record_list)
+    LOGGING.info(f"未同步订单数目: {num}")
 
     time.sleep(5)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
     for client_order_id in record_list:
@@ -270,6 +277,16 @@ def prepare_login():
     }
 
     return account_msg
+
+
+# 交易api
+geniusTrader = GeniusTrader()
+
+# 数据库记录
+sqlManager = TradeRecordManager("Monitor")
+
+# # 持仓信息
+# hold_info = HoldInfo("Monitor")
 
 
 async def main():
