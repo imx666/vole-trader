@@ -136,21 +136,17 @@ def update_chain(result):
         ]
 
         if hold_stock in target_stock_li:
-            # check_state(hold_stock, sqlManager, hold_info, geniusTrader)
             check_state(hold_stock)
 
 
-# def check_state(hold_stock, sqlManager: TradeRecordManager, hold_info: HoldInfo, geniusTrader: GeniusTrader,
-#                 withdraw_order=False):
 def check_state(hold_stock, withdraw_order=False):
     global sqlManager, hold_info, geniusTrader
     LOGGING.info(f"更新状态: {hold_stock}")
-    # sqlManager = TradeRecordManager(hold_stock)
 
     sqlManager.target_stock = hold_stock
-    # hold_info.target_stock = hold_stock
     geniusTrader.target_stock = hold_stock
     # 持仓信息
+    # hold_info.target_stock = hold_stock
     hold_info = HoldInfo(hold_stock)
 
     # 查询未成交订单并取消
@@ -159,6 +155,7 @@ def check_state(hold_stock, withdraw_order=False):
         LOGGING.info("无未同步订单")
         return
     # hold_info = HoldInfo(hold_stock)
+    # sqlManager = TradeRecordManager(hold_stock)
     # geniusTrader = GeniusTrader(hold_stock)
     num = len(record_list)
     LOGGING.info(f"未同步订单数目: {num}")
@@ -200,7 +197,6 @@ def check_state(hold_stock, withdraw_order=False):
             geniusTrader.cancel_order(client_order_id=client_order_id)
             sqlManager.update_trade_record(client_order_id, state="canceled")
 
-    # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
 
     # ready情况下不用更新
@@ -216,7 +212,6 @@ def check_state(hold_stock, withdraw_order=False):
     balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
     init_balance = 100 + balance_delta
     hold_info.pull("init_balance", init_balance)
-
 
     # # 重置建仓标志位
     # if long_position == 0:
@@ -284,9 +279,6 @@ geniusTrader = GeniusTrader()
 
 # 数据库记录
 sqlManager = TradeRecordManager("Monitor")
-
-# # 持仓信息
-# hold_info = HoldInfo("Monitor")
 
 
 async def main():
