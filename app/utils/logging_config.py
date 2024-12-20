@@ -36,12 +36,18 @@ Logging_dict = {
     },
     "handlers": {
         "app_01": logging_config("app_01"),
+        "auto_sync_account": logging_config("auto_sync_account"),
         "VoleTrader": logging_config("VoleTrader"),
         "auto_upload_index": logging_config("auto_upload_index"),
     },
     "loggers": {
         "app_01": {
             "handlers": ["app_01"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "auto_sync_account": {
+            "handlers": ["auto_sync_account"],
             "level": "DEBUG",
             "propagate": False,
         },
