@@ -3,23 +3,20 @@ import logging.config
 
 import os
 import sys
-import logging.config
 
 from pathlib import Path
 
 # 锁定环境变量路径
 project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-# print(project_path)
 dotenv_path = os.path.join(project_path, '../')
 sys.path.append(dotenv_path)
 
-from utils.logging_config import Logging_dict
 import time
-# import datetime
 from datetime import datetime
 import pytz
 
 
+# from utils.logging_config import Logging_dict
 # logging.config.dictConfig(Logging_dict)
 # LOGGING = logging.getLogger("app_01")
 
@@ -39,7 +36,6 @@ def beijing_time(timestamp_ms):
     timestamp_s = int(timestamp_ms) / 1000.0
 
     # 创建 UTC 时间对象
-    # utc_time = datetime.datetime.utcfromtimestamp(timestamp_s)
     utc_time = datetime.utcfromtimestamp(timestamp_s)
 
     # 设置时区为北京时间（东八区）
@@ -214,15 +210,13 @@ class GeniusTrader:
         result = self.marketDataAPI.get_history_candlesticks(
             instId=custom_stock,
             bar=period,
-            after=after,
-            # after="1723046400000"
+            after=after,  # after是时间戳
         )
         data = result['data']
         total = []
         for item in data:
             total.append(item[:5])
 
-        # LOGGING.info(result)
         return total
 
     def total_trade_market(self):
@@ -405,7 +399,13 @@ class GeniusTrader:
             return None
             # result = self.tradeAPI.get_order(instId=target_stock, clOrdId=client_order_id)
 
-        # LOGGING.info(result)
+        if result['code'] != '0':
+            # sMsg = result["data"][0]["sMsg"]
+            sMsg = result['msg']
+            LOGGING.info(result)
+            raise Exception(f"查询失败: {sMsg}")
+
+        LOGGING.info(result['msg'])
 
         deal_data = result['data'][0]
         side = deal_data["side"]
@@ -430,8 +430,14 @@ class GeniusTrader:
         LOGGING.info(f"{side}[{state}]")
         LOGGING.info(f"委托价格: {price_str}")
         LOGGING.info(f"委托数量: {amount}")
-        LOGGING.info(f"共{side}: {round(price * amount, 3)} USDT")
+        # LOGGING.info(f"共{side}: {round(price * amount, 3)} USDT")
+        LOGGING.info(f"共{side}: {price * amount} USDT")
         if side == "卖出":
+            fee = -fee
+            LOGGING.info(f"手续费: {round(fee, 10)} USDT")
+        else:
+            fee = -fee * price  # 买入时，手续费是按照标的物计算的
+            # LOGGING.info(f"手续费: {round(fee, 10)} {target_stock.split('-')[0]}")
             LOGGING.info(f"手续费: {round(fee, 10)} USDT")
         LOGGING.info(f"创建时间: {create_time}")
         LOGGING.info(f"成交时间: {fill_time}")
@@ -496,3 +502,5 @@ if __name__ == '__main__':
 
     # 查看订单执行结果
     genius_trader.execution_result(target_and_ordId=["OMI-USDT","2006379750208077824"])
+    # genius_trader.execution_result(target_and_ordId=["DOGE-USDT","2078711079121231872"])
+    # genius_trader.execution_result(client_order_id="DOGE1734450091657")
