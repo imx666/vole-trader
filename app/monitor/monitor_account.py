@@ -39,6 +39,21 @@ from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 
 
+origin_str_list = [
+            "execution_cycle",
+            "tradeFlag",
+            "平仓价(-0.5N线)",
+            "add_price_list(ideal)",
+            "reduce_price_list(ideal)",
+        ]
+
+origin_int_list = [
+            "max_long_position",
+            "long_position",
+            "max_sell_times",
+            "sell_times",
+        ]
+
 class HoldInfo:
     def __init__(self, target_stock):
         self.target_stock = target_stock
@@ -46,14 +61,16 @@ class HoldInfo:
         self.decoded_data = {}
         self.newest_all()
 
+
     def newest(self, op):
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
         # return target_op.decode() if target_op is not None else None
         target_value = target_op.decode()
-        if op == "execution_cycle":
+
+        if op in origin_str_list:
             return target_value
-        elif op == "tradeFlag":
-            return target_value
+        elif op in origin_int_list:
+            return int(target_value)
         else:
             return float(target_value)
         # return float(target_op.decode()) if target_op is not None else None
@@ -61,6 +78,13 @@ class HoldInfo:
     def get(self, key):
         target_value = self.decoded_data.get(key, None)
         return target_value
+
+    def remove(self, key):
+        response = self.redis_okx.hdel(f"hold_info:{self.target_stock}", key)
+        if response:
+            print("remove success")
+        else:
+            raise Exception(f"HoldInfo: redis: {self.target_stock} remove '{key}' failed, 请检查键是否存在")
 
     def pull(self, key, value):
         target_value = self.decoded_data.get(key, None)
@@ -72,15 +96,21 @@ class HoldInfo:
         self.redis_okx.hset(f"hold_info:{self.target_stock}", key, value)
         self.newest_all()
 
+    def pull_dict(self, target_dict):
+        self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
+        self.newest_all()
+
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
+        if all_info == {}:
+            raise Exception(f"HoldInfo: redis: {self.target_stock}持仓信息不存在")
         # self.decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
         # self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
         for k, v in all_info.items():
-            if k.decode('utf-8') == "execution_cycle":
+            if k.decode('utf-8') in origin_str_list:
                 self.decoded_data[k.decode('utf-8')] = v
-            elif k.decode('utf-8') == "tradeFlag":
-                self.decoded_data[k.decode('utf-8')] = v
+            elif k.decode('utf-8') in origin_int_list:
+                self.decoded_data[k.decode('utf-8')] = int(v)
             else:
                 self.decoded_data[k.decode('utf-8')] = float(v)
 
@@ -108,8 +138,9 @@ def update_chain(result):
             check_state(hold_stock, sqlManager, hold_info, geniusTrader)
 
 
-def check_state(hold_stock, sqlManager: TradeRecordManager, hold_info: HoldInfo, geniusTrader: GeniusTrader,
-                withdraw_order=False):
+# def check_state(hold_stock, sqlManager: TradeRecordManager, hold_info: HoldInfo, geniusTrader: GeniusTrader,
+#                 withdraw_order=False):
+def check_state(hold_stock, withdraw_order=False):
     LOGGING.info(f"更新状态: {hold_stock}")
     # sqlManager = TradeRecordManager(hold_stock)
 
@@ -165,11 +196,20 @@ def check_state(hold_stock, sqlManager: TradeRecordManager, hold_info: HoldInfo,
     # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
 
+    # ready情况下不用更新
+    if execution_cycle == "ready":
+        return
+
     long_position = sqlManager.get(execution_cycle, "long_position")
     hold_info.pull("long_position", long_position)
 
     sell_times = sqlManager.get(execution_cycle, "sell_times")
     hold_info.pull("sell_times", sell_times)
+
+    balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
+    init_balance = 100 + balance_delta
+    hold_info.pull("init_balance", init_balance)
+
 
     # # 重置建仓标志位
     # if long_position == 0:
@@ -294,6 +334,7 @@ async def main():
         except Exception as e:
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             LOGGING.error(f"{current_time} 连接断开，不重新连接，请检查……其他 {e}")
+            break
 
 
 if __name__ == '__main__':
@@ -314,6 +355,9 @@ if __name__ == '__main__':
             }
         ]
     }
+
+    # 争对此问题！！！
+    # 连接断开，不重新连接，请检查……其他 timed out during handshake
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
