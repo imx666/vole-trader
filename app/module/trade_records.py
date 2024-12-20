@@ -71,7 +71,7 @@ Base.metadata.create_all(bind=engine)
 
 
 class TradeRecordManager:
-    def __init__(self, target_stock, strategy_name):
+    def __init__(self, target_stock, strategy_name=None):
         self.session = Session()
         self.target_stock = target_stock
         self.strategy = strategy_name
@@ -83,7 +83,7 @@ class TradeRecordManager:
         """生成唯一的 execution_cycle 编号"""
         today = datetime.now().strftime('%Y%m%d')
         last_record = self.session.query(TradeRecord).filter(
-            TradeRecord.execution_cycle.like(f'{strategy_name}_{today}%')
+            TradeRecord.execution_cycle.like(f'{self.strategy}_{today}%')
         ).order_by(TradeRecord.id.desc()).first()
 
         if last_record:
@@ -92,10 +92,10 @@ class TradeRecordManager:
         else:
             new_number = 1
 
-        return f"{strategy_name}_{today}_{new_number:04d}"
+        return f"{self.strategy}_{today}_{new_number:04d}"
 
     def last_execution_cycle(self, strategy_name):
-        """最后的的 execution_cycle 编号"""
+        """获取最后的的 execution_cycle 编号"""
         last_record = self.session.query(TradeRecord).filter(
             TradeRecord.execution_cycle.like(f'{strategy_name}%')
         ).order_by(TradeRecord.create_time.desc()).first()
@@ -296,12 +296,6 @@ class TradeRecordManager:
         print(f"Added trade record: {trade_record}")
         return trade_record
 
-    # def add_trade_record(session, trade_record):
-    #     """添加一条新的交易记录"""
-    #     session.add(trade_record)
-    #     session.commit()
-    #     print(f"Added trade record: {trade_record}")
-
     def get_trade_record(self, trade_id):
         """获取指定ID的交易记录"""
         trade_record = self.session.query(TradeRecord).filter_by(id=trade_id).first()
@@ -398,7 +392,6 @@ if __name__ == "__main__":
     # last_hold_price = manager.get(execution_cycle, "sell_times")
     # last_hold_price = manager.get(execution_cycle, "rest_amount")
     # print(last_hold_price)
-
 
     execution_cycle = manager.generate_execution_cycle(strategy_name)
 
