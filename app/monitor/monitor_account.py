@@ -52,26 +52,26 @@ origin_int_list = [
     "max_sell_times",
     "sell_times",
 ]
-
-# 订阅账户频道的消息
-subscribe_msg = {
-    "op": "subscribe",
-    "args": [
-        {
-            "channel": "balance_and_position",
-        }
-    ]
-}
-
-target_stock_li = [
-    "BTC-USDT",
-    "ETH-USDT",
-    "DOGE-USDT",
-    "FLOKI-USDT",
-    # "LUNC-USDT",
-    # "OMI-USDT",
-    # "PEPE-USDT",
-]
+#
+# # 订阅账户频道的消息
+# subscribe_msg = {
+#     "op": "subscribe",
+#     "args": [
+#         {
+#             "channel": "balance_and_position",
+#         }
+#     ]
+# }
+#
+# target_stock_li = [
+#     "BTC-USDT",
+#     "ETH-USDT",
+#     "DOGE-USDT",
+#     "FLOKI-USDT",
+#     # "LUNC-USDT",
+#     # "OMI-USDT",
+#     # "PEPE-USDT",
+# ]
 
 
 class HoldInfo:
@@ -87,7 +87,7 @@ class HoldInfo:
         if target_op is None:
             raise Exception(f"HoldInfo: redis: 键'{op}'不存在")
 
-        target_value = target_op.decode()
+        target_value = target_op.decode('utf-8')
 
         if op in origin_str_list:
             return target_value
@@ -105,8 +105,8 @@ class HoldInfo:
         response = self.redis_okx.hdel(f"hold_info:{self.target_stock}", key)
         if response:
             print("remove success")
-        else:
-            raise Exception(f"HoldInfo: redis: {self.target_stock} remove '{key}' failed, 请检查键是否存在")
+        # else:
+        #     raise Exception(f"HoldInfo: redis: {self.target_stock} remove '{key}' failed, 请检查键是否存在")
 
     def pull(self, key, value):
         target_value = self.decoded_data.get(key, None)
@@ -121,6 +121,7 @@ class HoldInfo:
     def pull_dict(self, target_dict):
         self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
         self.newest_all()
+        LOGGING.info("信息已同步至redis")
 
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
@@ -137,17 +138,17 @@ class HoldInfo:
                 self.decoded_data[k.decode('utf-8')] = float(v)
 
 
-def update_chain(result):
-    data = result['data'][0]['balData']
-
-    for item in data:
-        currency = item['ccy']
-        # sort_name = target_stock.split('-')[0]
-        hold_stock = currency + "-USDT"
-        # LOGGING.info(hold_stock)
-
-        if hold_stock in target_stock_li:
-            check_state(hold_stock)
+# def update_chain(result):
+#     data = result['data'][0]['balData']
+#
+#     for item in data:
+#         currency = item['ccy']
+#         # sort_name = target_stock.split('-')[0]
+#         hold_stock = currency + "-USDT"
+#         # LOGGING.info(hold_stock)
+#
+#         if hold_stock in target_stock_li:
+#             check_state(hold_stock)
 
 
 def check_state(hold_stock, withdraw_order=False):
@@ -171,7 +172,14 @@ def check_state(hold_stock, withdraw_order=False):
     num = len(record_list)
     LOGGING.info(f"未同步订单数目: {num}")
 
-    time.sleep(5)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
+    # 获取编号
+    execution_cycle = hold_info.get("execution_cycle")
+
+    # ready情况下不用更新
+    if execution_cycle == "ready":
+        return
+
+    # time.sleep(5)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
     for client_order_id in record_list:
         # 查询执行结果
         result = geniusTrader.execution_result(client_order_id=client_order_id)
@@ -208,25 +216,40 @@ def check_state(hold_stock, withdraw_order=False):
             geniusTrader.cancel_order(client_order_id=client_order_id)
             sqlManager.update_trade_record(client_order_id, state="canceled")
 
-    execution_cycle = hold_info.get("execution_cycle")
-
-    # ready情况下不用更新
-    if execution_cycle == "ready":
-        return
-
     long_position = sqlManager.get(execution_cycle, "long_position")
-    hold_info.pull("long_position", long_position)
-
     sell_times = sqlManager.get(execution_cycle, "sell_times")
-    hold_info.pull("sell_times", sell_times)
 
-    balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
-    init_balance = 100 + balance_delta
-    hold_info.pull("init_balance", init_balance)
+    # 查询未成交订单
+    record_list = sqlManager.filter_record(state="live")
+    # if not record_list:
+    #     LOGGING.info("无未同步订单")
 
-    # # 重置建仓标志位
-    # if long_position == 0:
-    #     hold_info.pull("build_price", 0)
+    new_info = {
+        "pending_order": 1 if record_list else 0,
+        "long_position": long_position,
+        "sell_times": sell_times
+    }
+
+    # 如果此编号的状态是已完成，周期结束后，遇到close的情况下
+    if sqlManager.get(execution_cycle, "execution_state") == "completed":
+        LOGGING.info("平仓已经完成，重置redis信息")
+        # 重置余额
+        balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
+        init_balance = 100 + balance_delta
+
+        new_info = {
+           'execution_cycle': "ready",  # 重置编码
+           'pending_order': 0,
+           'tradeFlag': 'all-auth',
+           'init_balance': init_balance,
+           'risk_rate': 0.0035,
+           'max_long_position': 4,
+           'max_sell_times': 3,
+           'long_position': 0,
+           'sell_times': 0,
+           'build_price': 0,
+        }
+    hold_info.pull_dict(new_info)
 
 
 def show_account(result):
@@ -288,79 +311,82 @@ def prepare_login():
 # 交易api
 geniusTrader = GeniusTrader()
 
+strategy_name = "TURTLE"
+target_stock = 'sb'
 # 数据库记录
-sqlManager = TradeRecordManager("Monitor")
+sqlManager = TradeRecordManager(target_stock=target_stock, strategy_name=strategy_name)
+# sqlManager = TradeRecordManager("moni")
 
 
-async def main():
-    while True:
-        reconnect_attempts = 0
-        try:
-            async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
-                account_msg = prepare_login()
-                LOGGING.info(f"发送登录消息: {account_msg}")
-                await websocket.send(json.dumps(account_msg))
-                response = await websocket.recv()
-                LOGGING.info(f"登录响应: {response}")
+# async def main():
+#     while True:
+#         reconnect_attempts = 0
+#         try:
+#             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
+#                 account_msg = prepare_login()
+#                 LOGGING.info(f"发送登录消息: {account_msg}")
+#                 await websocket.send(json.dumps(account_msg))
+#                 response = await websocket.recv()
+#                 LOGGING.info(f"登录响应: {response}")
+#
+#                 # 发送订阅请求
+#                 await websocket.send(json.dumps(subscribe_msg))
+#                 subscribe_response = await websocket.recv()
+#                 LOGGING.info(f"订阅响应: {subscribe_response}")
+#
+#                 # 持续监听增量数据
+#                 while True:
+#                     try:
+#                         # response = await websocket.recv()
+#                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
+#
+#                         LOGGING.info(f"收到增量数据: {response}")
+#                         response = json.loads(response)
+#                         if response.get("data"):
+#                             # show_account(response)
+#                             update_chain(response)
+#
+#                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+#                         try:
+#                             await websocket.send('ping')
+#                             res = await websocket.recv()
+#                             LOGGING.info(f"收到: {res}")
+#                             # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#                             # LOGGING.info(f"{current_time} 收到: {res}")
+#                             continue
+#
+#                         except Exception as e:
+#                             LOGGING.info(f"连接关闭，正在重连…… {e}")
+#                             break
+#
+#         # 重新尝试连接，使用指数退避策略
+#         except websockets.exceptions.ConnectionClosed as e:
+#             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             reconnect_attempts += 1
+#             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
+#             LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
+#             LOGGING.error(f"Connection closed: {e}")
+#             await asyncio.sleep(wait_time)
+#
+#         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
+#         except socket.error as e:
+#             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             reconnect_attempts += 1
+#             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
+#             LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
+#             LOGGING.error(f"Connection closed: {e}")
+#             await asyncio.sleep(wait_time)
+#
+#         except Exception as e:
+#             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             LOGGING.error(f"{current_time} 连接断开，不重新连接，请检查……其他 {e}")
+#             break
 
-                # 发送订阅请求
-                await websocket.send(json.dumps(subscribe_msg))
-                subscribe_response = await websocket.recv()
-                LOGGING.info(f"订阅响应: {subscribe_response}")
-
-                # 持续监听增量数据
-                while True:
-                    try:
-                        # response = await websocket.recv()
-                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
-
-                        LOGGING.info(f"收到增量数据: {response}")
-                        response = json.loads(response)
-                        if response.get("data"):
-                            # show_account(response)
-                            update_chain(response)
-
-                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-                        try:
-                            await websocket.send('ping')
-                            res = await websocket.recv()
-                            LOGGING.info(f"收到: {res}")
-                            # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            # LOGGING.info(f"{current_time} 收到: {res}")
-                            continue
-
-                        except Exception as e:
-                            LOGGING.info(f"连接关闭，正在重连…… {e}")
-                            break
-
-        # 重新尝试连接，使用指数退避策略
-        except websockets.exceptions.ConnectionClosed as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            reconnect_attempts += 1
-            wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
-            LOGGING.error(f"Connection closed: {e}")
-            await asyncio.sleep(wait_time)
-
-        # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
-        except socket.error as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            reconnect_attempts += 1
-            wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
-            LOGGING.error(f"Connection closed: {e}")
-            await asyncio.sleep(wait_time)
-
-        except Exception as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            LOGGING.error(f"{current_time} 连接断开，不重新连接，请检查……其他 {e}")
-            break
-
-
-if __name__ == '__main__':
-
-    # 争对此问题！！！
-    # 连接断开，不重新连接，请检查……其他 timed out during handshake
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+#
+# if __name__ == '__main__':
+#
+#     # 争对此问题！！！
+#     # 连接断开，不重新连接，请检查……其他 timed out during handshake
+#
+#     loop = asyncio.get_event_loop()
+#     loop.run_until_complete(main())
