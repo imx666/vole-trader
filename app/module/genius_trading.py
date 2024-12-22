@@ -1,5 +1,3 @@
-# 导入日志配置
-import logging.config
 
 import os
 import sys
@@ -16,6 +14,8 @@ from datetime import datetime
 import pytz
 
 
+# # 导入日志配置
+# import logging.config
 # from utils.logging_config import Logging_dict
 # logging.config.dictConfig(Logging_dict)
 # LOGGING = logging.getLogger("app_01")
@@ -263,7 +263,8 @@ class GeniusTrader:
         if result['code'] == '0':
             LOGGING.info("下单成功")
             LOGGING.info(result)
-            self.execution_result(result)
+            if order_type == "market":
+                self.execution_result(result)
             self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
@@ -299,7 +300,8 @@ class GeniusTrader:
         if result['code'] == '0':
             LOGGING.info("下单成功")
             LOGGING.info(result)
-            self.execution_result(result)
+            if order_type == "market":
+                self.execution_result(result)
             self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
@@ -501,6 +503,6 @@ if __name__ == '__main__':
     # genius_trader.pending_order(target_stock)
 
     # 查看订单执行结果
-    genius_trader.execution_result(target_and_ordId=["OMI-USDT","2006379750208077824"])
+    # genius_trader.execution_result(target_and_ordId=["OMI-USDT","2006379750208077824"])
     # genius_trader.execution_result(target_and_ordId=["DOGE-USDT","2078711079121231872"])
-    # genius_trader.execution_result(client_order_id="DOGE1734450091657")
+    genius_trader.execution_result(client_order_id="FLOKI1734759229556")
