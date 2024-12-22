@@ -81,9 +81,10 @@ class TradeRecordManager:
 
     def generate_execution_cycle(self):
         """生成唯一的 execution_cycle 编号"""
+        sort_name = self.target_stock.split('-')[0]
         today = datetime.now().strftime('%Y%m%d')
         last_record = self.session.query(TradeRecord).filter(
-            TradeRecord.execution_cycle.like(f'{self.strategy}_{today}%')
+            TradeRecord.execution_cycle.like(f'{self.strategy}-{sort_name}-{today}%')
         ).order_by(TradeRecord.id.desc()).first()
 
         if last_record:
@@ -92,7 +93,7 @@ class TradeRecordManager:
         else:
             new_number = 1
 
-        return f"{self.strategy}_{today}_{new_number:04d}"
+        return f"{self.strategy}-{sort_name}-{today}_{new_number:04d}"
 
     def last_execution_cycle(self, strategy_name):
         """获取最后的的 execution_cycle 编号"""
@@ -151,7 +152,7 @@ class TradeRecordManager:
                 operation = record.operation
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
                     total_max_amount += record.amount
-                if operation == 'close':
+                if operation == 'close' and record.state == 'filled':
                     raise Exception(f"trade_record实例不存在: {op}")
             return total_max_amount
 
@@ -167,7 +168,7 @@ class TradeRecordManager:
                 operation = record.operation
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
                     total_max_value += record.value
-                if operation == 'close':
+                if operation == 'close' and record.state == 'filled':
                     raise Exception(f"trade_record实例不存在: {op}")
             return total_max_value
 
@@ -185,7 +186,7 @@ class TradeRecordManager:
                     total_amount += record.amount
                 if operation == 'reduce' and record.state == 'filled':
                     total_amount -= record.amount
-                if operation == 'close':
+                if operation == 'close' and record.state == 'filled':
                     raise Exception(f"trade_record实例不存在: {op}")
             return total_amount
 
@@ -203,9 +204,22 @@ class TradeRecordManager:
                     total_value += record.value
                 if operation == 'reduce' and record.state == 'filled':
                     total_value -= record.value
-                if operation == 'close':
+                if operation == 'close' and record.state == 'filled':
                     raise Exception(f"trade_record实例不存在: {op}")
             return total_value
+
+        if op == 'execution_state':
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if operation == 'close' and record.state == 'filled':
+                    raise "completed"
+            return "running"
 
         if op == 'balance_delta':
             total_value = 0
