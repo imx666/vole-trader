@@ -118,6 +118,7 @@ class GeniusTrader:
 
     def stock_handle_info(self, custom_stock):
         """个股持仓信息"""
+        LOGGING.info(f"{custom_stock} 持有信息")
 
         sort_name = custom_stock.split('-')[0]
         result = self.accountAPI.get_account_balance()
@@ -261,11 +262,11 @@ class GeniusTrader:
         )
 
         if result['code'] == '0':
-            LOGGING.info("下单成功")
-            LOGGING.info(result)
+            LOGGING.info(f"下单成功: {result}")
+            # LOGGING.info(result)
             if order_type == "market":
                 self.execution_result(result)
-            self.stock_handle_info(self.target_stock)
+            # self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
             LOGGING.info(f"下单失败: {sMsg}")
@@ -298,11 +299,11 @@ class GeniusTrader:
         )
 
         if result['code'] == '0':
-            LOGGING.info("下单成功")
-            LOGGING.info(result)
+            LOGGING.info(f"下单成功: {result}")
+            # LOGGING.info(result)
             if order_type == "market":
                 self.execution_result(result)
-            self.stock_handle_info(self.target_stock)
+            # self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
             LOGGING.info(f"下单失败: {sMsg}")
