@@ -54,7 +54,7 @@ class TradeAssistant:
         rest_amount = self.sqlManager.get(execution_cycle, "rest_amount")
         rest_amount = float(rest_amount)
         amount = rest_amount if rest_amount < target_amount else target_amount
-        operation = "close" if rest_amount < target_amount else "reduce"
+        operation = "close" if rest_amount <= target_amount else "reduce"
 
         if self.trade_type == "simulate":
             self.simulate(execution_cycle, operation, target_market_price, amount)
