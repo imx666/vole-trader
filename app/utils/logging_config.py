@@ -37,8 +37,12 @@ Logging_dict = {
     "handlers": {
         "app_01": logging_config("app_01"),
         "auto_sync_account": logging_config("auto_sync_account"),
-        "VoleTrader": logging_config("VoleTrader"),
         "auto_upload_index": logging_config("auto_upload_index"),
+        "VoleTrader": logging_config("VoleTrader"),
+        "VoleTrader-DOGE": logging_config("VoleTrader-DOGE"),
+        "VoleTrader-ETH": logging_config("VoleTrader-ETH"),
+        "VoleTrader-BTC": logging_config("VoleTrader-BTC"),
+        "VoleTrader-FLOKI": logging_config("VoleTrader-FLOKI"),
     },
     "loggers": {
         "app_01": {
@@ -51,13 +55,33 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
+        "auto_upload_index": {
+            "handlers": ["auto_upload_index"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
         "VoleTrader": {
             "handlers": ["VoleTrader"],
             "level": "DEBUG",
             "propagate": False,
         },
-        "auto_upload_index": {
-            "handlers": ["auto_upload_index"],
+        "VoleTrader-DOGE": {
+            "handlers": ["VoleTrader-DOGE"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "VoleTrader-ETH": {
+            "handlers": ["VoleTrader-ETH"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "VoleTrader-BTC": {
+            "handlers": ["VoleTrader-BTC"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "VoleTrader-FLOKI": {
+            "handlers": ["VoleTrader-FLOKI"],
             "level": "DEBUG",
             "propagate": False,
         },
