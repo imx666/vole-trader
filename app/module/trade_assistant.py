@@ -52,6 +52,7 @@ class TradeAssistant:
         # else:
         target_amount = total_max_amount * ratio
         rest_amount = self.sqlManager.get(execution_cycle, "rest_amount")
+        rest_amount = float(rest_amount)
         amount = rest_amount if rest_amount < target_amount else target_amount
         operation = "close" if rest_amount < target_amount else "reduce"
 
