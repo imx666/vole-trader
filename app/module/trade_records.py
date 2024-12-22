@@ -346,49 +346,6 @@ class TradeRecordManager:
             return False
 
 
-def delete_trade_record(session, trade_id):
-    """根据 ID 删除一条交易记录"""
-    trade_record = session.query(TradeRecord).filter_by(id=trade_id).first()
-    if trade_record:
-        session.delete(trade_record)
-        session.commit()
-        print(f"Deleted trade record with ID {trade_id}")
-    else:
-        print(f"No trade record found with ID {trade_id}")
-
-
-def update_trade_record(session, order_id, **kwargs):
-    """根据 ID 更新一条交易记录"""
-    trade_record = session.query(TradeRecord).filter_by(client_order_id=order_id).first()
-    if trade_record:
-        for key, value in kwargs.items():
-            setattr(trade_record, key, value)
-        session.commit()
-        print(f"Updated trade record with ID {order_id}: {trade_record}")
-    else:
-        print(f"No trade record found with ID {order_id}")
-
-
-def get_trade_record(session, trade_id):
-    """根据 ID 获取一条交易记录"""
-    trade_record = session.query(TradeRecord).filter_by(id=trade_id).first()
-    if trade_record:
-        return trade_record
-    else:
-        print(f"No trade record found with ID {trade_id}")
-        return None
-
-
-def list_trade_records(session):
-    """列出所有交易记录"""
-    trade_records = session.query(TradeRecord).all()
-    if trade_records:
-        for record in trade_records:
-            print(record)
-    else:
-        print("No trade records found")
-
-
 if __name__ == "__main__":
     strategy_name = 'sb'
     strategy_name = 'TURTLE'
@@ -396,18 +353,17 @@ if __name__ == "__main__":
 
     target_stock = "BTC"
     target_stock = "OMI-USDT"
-    manager = TradeRecordManager(target_stock, strategy_name)
+    sqlManager = TradeRecordManager(target_stock, strategy_name)
 
-
-    # execution_cycle = manager.last_execution_cycle(strategy_name)  # 获取编号
-    # last_hold_price = manager.get(execution_cycle, "last_hold_price")
-    # last_hold_price = manager.get(execution_cycle, "open_price")
-    # last_hold_price = manager.get(execution_cycle, "long_position")
-    # last_hold_price = manager.get(execution_cycle, "sell_times")
-    # last_hold_price = manager.get(execution_cycle, "rest_amount")
+    # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
+    # last_hold_price = sqlManager.get(execution_cycle, "last_hold_price")
+    # last_hold_price = sqlManager.get(execution_cycle, "open_price")
+    # last_hold_price = sqlManager.get(execution_cycle, "long_position")
+    # last_hold_price = sqlManager.get(execution_cycle, "sell_times")
+    # last_hold_price = sqlManager.get(execution_cycle, "rest_amount")
     # print(last_hold_price)
 
-    execution_cycle = manager.generate_execution_cycle(strategy_name)
+    execution_cycle = sqlManager.generate_execution_cycle(strategy_name)
 
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
@@ -416,7 +372,7 @@ if __name__ == "__main__":
     create_time = datetime.fromtimestamp(timestamp_ms / 1000.0)
 
     # 添加一条新记录
-    new_trade = manager.add_trade_record(
+    new_trade = sqlManager.add_trade_record(
         create_time=create_time,
         execution_cycle=execution_cycle,
         operation="BUY",
@@ -430,7 +386,7 @@ if __name__ == "__main__":
 
     # client_order_id = 'OMI12344'
     # # 更新一条交易记录
-    # manager.update_trade_record(client_order_id, state='cancel', amount=1.5)
+    # sqlManager.update_trade_record(client_order_id, state='cancel', amount=1.5)
 
     # # 获取一条交易记录
     # trade_record = get_trade_record(session, 1)
