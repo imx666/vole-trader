@@ -31,11 +31,11 @@ if __name__ == '__main__':
 
 
     # target_stock = "LUNC-USDT"
-    # target_stock = "BTC-USDT"
-    # target_stock = "ETH-USDT"
+    target_stock = "BTC-USDT"
+    target_stock = "ETH-USDT"
     target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
-    # target_stock = "DOGE-USDT"
+    target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
 
 
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     redis_okx.hset(f"hold_info:{target_stock}",
                    mapping={
                        'execution_cycle': "ready",
+                       'pending_order': 0,
                        'tradeFlag': 'all-auth',
                        'init_balance': 100,
                        'risk_rate': 0.0035,
@@ -55,19 +56,21 @@ if __name__ == '__main__':
                        'build_price': 0
                    })
 
-    strategy_name = 'TURTLE'
-
     hold_info = HoldInfo(target_stock)
-    # hold_info.remove("build_price(ideal)")
-    # sqlManager = TradeRecordManager(target_stock, strategy_name)
+
+
+
 
 
 
     # # 重启redis时
     # # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
-    # execution_cycle = "自己看数据库是哪个编号"
-    # execution_cycle = "TURTLE_20241217_0001"
+    # # execution_cycle = "自己看数据库是哪个编号"
+    # # execution_cycle = "TURTLE_20241217_0001"
+    # sqlManager = TradeRecordManager(target_stock, strategy_name="TURTLE")
+    # execution_cycle = "ready"
     # long_position = sqlManager.get(execution_cycle, "long_position")
+    # sell_times = sqlManager.get(execution_cycle, "sell_times")
     # build_price = sqlManager.get(execution_cycle, "build_price"),
     # balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
     # init_balance = 100 + balance_delta
@@ -77,12 +80,14 @@ if __name__ == '__main__':
     # redis_okx.hset(f"hold_info:{target_stock}",
     #                mapping={
     #                    'execution_cycle': execution_cycle,
+    #                    'pending_order': 0,
     #                    'tradeFlag': 'all-auth',
     #                    'init_balance': init_balance,
     #                    'risk_rate': 0.0035,
-    #                    'max_long_position': 3,
+    #                    'max_long_position': 4,
     #                    'max_sell_times': 3,
     #                    'long_position': long_position,
+    #                    'sell_times': sell_times,
     #                    # build_price是防止重复挂建仓订单的，所以会有它大于0但是long_position还等于0的情况出现
     #                    'build_price': sqlManager.get(execution_cycle, "build_price"),
     #                })
