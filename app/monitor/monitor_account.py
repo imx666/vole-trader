@@ -38,41 +38,6 @@ from module.redis_url import redis_url
 from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 
-origin_str_list = [
-    "execution_cycle",
-    "tradeFlag",
-    "平仓价(-0.5N线)",
-    "add_price_list(ideal)",
-    "reduce_price_list(ideal)",
-]
-
-origin_int_list = [
-    "max_long_position",
-    "long_position",
-    "max_sell_times",
-    "sell_times",
-]
-#
-# # 订阅账户频道的消息
-# subscribe_msg = {
-#     "op": "subscribe",
-#     "args": [
-#         {
-#             "channel": "balance_and_position",
-#         }
-#     ]
-# }
-#
-# target_stock_li = [
-#     "BTC-USDT",
-#     "ETH-USDT",
-#     "DOGE-USDT",
-#     "FLOKI-USDT",
-#     # "LUNC-USDT",
-#     # "OMI-USDT",
-#     # "PEPE-USDT",
-# ]
-
 
 class HoldInfo:
     def __init__(self, target_stock):
@@ -138,22 +103,9 @@ class HoldInfo:
                 self.decoded_data[k.decode('utf-8')] = float(v)
 
 
-# def update_chain(result):
-#     data = result['data'][0]['balData']
-#
-#     for item in data:
-#         currency = item['ccy']
-#         # sort_name = target_stock.split('-')[0]
-#         hold_stock = currency + "-USDT"
-#         # LOGGING.info(hold_stock)
-#
-#         if hold_stock in target_stock_li:
-#             check_state(hold_stock)
-
-
 def check_state(hold_stock, withdraw_order=False):
     global sqlManager, geniusTrader
-    LOGGING.info(f"更新状态: {hold_stock}")
+    LOGGING.info(f"检查更新状态: {hold_stock}")
 
     sqlManager.target_stock = hold_stock
     geniusTrader.target_stock = hold_stock
@@ -221,9 +173,6 @@ def check_state(hold_stock, withdraw_order=False):
 
     # 查询未成交订单
     record_list = sqlManager.filter_record(state="live")
-    # if not record_list:
-    #     LOGGING.info("无未同步订单")
-
     new_info = {
         "pending_order": 1 if record_list else 0,
         "long_position": long_position,
@@ -308,6 +257,22 @@ def prepare_login():
     return account_msg
 
 
+origin_str_list = [
+    "execution_cycle",
+    "tradeFlag",
+    "平仓价(-0.5N线)",
+    "add_price_list(ideal)",
+    "reduce_price_list(ideal)",
+]
+
+origin_int_list = [
+    "max_long_position",
+    "long_position",
+    "max_sell_times",
+    "sell_times",
+]
+
+
 # 交易api
 geniusTrader = GeniusTrader()
 
@@ -318,75 +283,3 @@ sqlManager = TradeRecordManager(target_stock=target_stock, strategy_name=strateg
 # sqlManager = TradeRecordManager("moni")
 
 
-# async def main():
-#     while True:
-#         reconnect_attempts = 0
-#         try:
-#             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/private') as websocket:
-#                 account_msg = prepare_login()
-#                 LOGGING.info(f"发送登录消息: {account_msg}")
-#                 await websocket.send(json.dumps(account_msg))
-#                 response = await websocket.recv()
-#                 LOGGING.info(f"登录响应: {response}")
-#
-#                 # 发送订阅请求
-#                 await websocket.send(json.dumps(subscribe_msg))
-#                 subscribe_response = await websocket.recv()
-#                 LOGGING.info(f"订阅响应: {subscribe_response}")
-#
-#                 # 持续监听增量数据
-#                 while True:
-#                     try:
-#                         # response = await websocket.recv()
-#                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
-#
-#                         LOGGING.info(f"收到增量数据: {response}")
-#                         response = json.loads(response)
-#                         if response.get("data"):
-#                             # show_account(response)
-#                             update_chain(response)
-#
-#                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-#                         try:
-#                             await websocket.send('ping')
-#                             res = await websocket.recv()
-#                             LOGGING.info(f"收到: {res}")
-#                             # current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#                             # LOGGING.info(f"{current_time} 收到: {res}")
-#                             continue
-#
-#                         except Exception as e:
-#                             LOGGING.info(f"连接关闭，正在重连…… {e}")
-#                             break
-#
-#         # 重新尝试连接，使用指数退避策略
-#         except websockets.exceptions.ConnectionClosed as e:
-#             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#             reconnect_attempts += 1
-#             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-#             LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
-#             LOGGING.error(f"Connection closed: {e}")
-#             await asyncio.sleep(wait_time)
-#
-#         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
-#         except socket.error as e:
-#             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#             reconnect_attempts += 1
-#             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-#             LOGGING.error(f"{current_time} Reconnecting in {wait_time} seconds...")
-#             LOGGING.error(f"Connection closed: {e}")
-#             await asyncio.sleep(wait_time)
-#
-#         except Exception as e:
-#             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#             LOGGING.error(f"{current_time} 连接断开，不重新连接，请检查……其他 {e}")
-#             break
-
-#
-# if __name__ == '__main__':
-#
-#     # 争对此问题！！！
-#     # 连接断开，不重新连接，请检查……其他 timed out during handshake
-#
-#     loop = asyncio.get_event_loop()
-#     loop.run_until_complete(main())
