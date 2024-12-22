@@ -15,19 +15,30 @@ from monitor.monitor_account import check_state
 from monitor.monitor_account import HoldInfo
 from monitor.monitor_account import prepare_login
 
+
+import sys
+# 第一个参数是脚本名称，后续的是传入的参数
+if len(sys.argv) > 1:
+    target_stock = sys.argv[1]  # 这里会得到 '123'
+    print(f"The argument target_stock is: {target_stock}")
+else:
+    print("Error: No arguments were passed. Please provide an target_stock and try again!")
+    sys.exit(1)  # 使用非零状态码表示异常退出
+
+sort_name = target_stock.split('-')[0]
+
 import logging.config
 from utils.logging_config import Logging_dict
 
 logging.config.dictConfig(Logging_dict)
-LOGGING = logging.getLogger("VoleTrader")
+LOGGING = logging.getLogger(f"VoleTrader-{sort_name}")
+# LOGGING = logging.getLogger(f"VoleTrader")
 
-
-price_dict = {}
 
 # target_stock = "LUNC-USDT"
 # target_stock = "BTC-USDT"
 # target_stock = "ETH-USDT"
-target_stock = "FLOKI-USDT"
+# target_stock = "FLOKI-USDT"
 # target_stock = "OMI-USDT"
 # target_stock = "DOGE-USDT"
 # target_stock = "PEPE-USDT"
@@ -42,6 +53,8 @@ subscribe_msg = {
         }
     ]
 }
+
+price_dict = {}
 
 redis_okx = redis.Redis.from_url(redis_url)
 last_read_time = redis_okx.hget(f"common_index:{target_stock}", 'last_read_time')
@@ -58,10 +71,14 @@ agent = TradeAssistant('TURTLE', target_stock, trade_type="actual")
 
 
 # 数据库记录
-sqlManager = TradeRecordManager("TURTLE")
+sqlManager = TradeRecordManager(target_stock, "TURTLE")
 
 
 def trade_auth(side):
+    # pending_order = hold_info.newest("pending_order")
+    # if pending_order > 0:
+    #     LOGGING.info(f"有 {pending_order} 个挂单未成交,拒绝继续挂单")
+    #     return False
     tradeFlag = hold_info.newest("tradeFlag")
     if tradeFlag == "all-auth":
         LOGGING.info("trade approved")
@@ -103,6 +120,7 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
     global price_dict
 
     # 计算目标价格
+    long_position = hold_info.newest("long_position")
     build_price = hold_info.newest("build_price")
     stop_loss_price = round(build_price - 0.5 * ATR, 10)
 
@@ -114,8 +132,8 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         close_type = "唐奇安下线"
 
     price_dict_2_redis = {
-        '平仓价(-0.5N线)': '未建仓' if build_price == 0 else stop_loss_price,
         'ATR': ATR,
+        '平仓价(-0.5N线)': '未建仓' if build_price == 0 else stop_loss_price,
     }
 
     price_dict = {
@@ -124,23 +142,26 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         'close_type': close_type,
     }
 
-    if build_price == 0:
+    if long_position == 0:
         price_dict_2_redis['build_price(ideal)'] = up_Dochian_price
         price_dict['build_price(ideal)'] = up_Dochian_price
 
-    if build_price > 0:
+    if long_position > 0:
         hold_info.remove('build_price(ideal)')
         add_price_list = []
         reduce_price_list = []
         build_price = hold_info.newest("build_price")
-        long_position = hold_info.newest("long_position")
-        sell_times = hold_info.newest("sell_times")
-        for i in range(long_position, hold_info.get("max_long_position")):
+        # long_position = hold_info.newest("long_position")
+        # sell_times = hold_info.newest("sell_times")
+
+        # for i in range(long_position, hold_info.get("max_long_position")):
+        for i in range(1, hold_info.get("max_long_position")):
             target_market_price = round(build_price + i * 0.5 * ATR, 10)
             # target_market_price = build_price + i * 0.5 * ATR
             add_price_list.append(target_market_price)
 
-        for i in range(sell_times, hold_info.get("max_sell_times")):
+        # for i in range(sell_times, hold_info.get("max_sell_times")):
+        for i in range(1, hold_info.get("max_sell_times")):
             target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
             # target_market_price = build_price + (0.5 * i + 2) * ATR
             reduce_price_list.append(target_market_price)
@@ -156,6 +177,11 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
     hold_info.pull_dict(price_dict_2_redis)
 
     # return price_dict
+
+
+def notice_change(long_position, sell_times):
+    if long_position != hold_info.get("long_position") or sell_times != hold_info.get("sell_times"):
+        load_index_and_compute_price(target_stock)
 
 
 def load_index_and_compute_price(target_stock):
@@ -194,7 +220,7 @@ def timed_task():
     minute = now_bj.minute  # 第几分
 
     if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
-        # if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 20:
+        # if hour_of_day in [0, 4, 8, 12, 16, 20, 13] and minute == 5:
         global DayStamp
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
         if DayStamp is not None and current_time == DayStamp:
@@ -210,10 +236,12 @@ def timed_task():
 
         # 取消未成交的挂单
         # check_state(target_stock, sqlManager, hold_info, geniusTrader, withdraw_order=True)
-        check_state(target_stock)
+        check_state(target_stock, withdraw_order=True)
 
         # 开放交易权限
         hold_info.pull("tradeFlag", "all-auth")  # 同步新编号
+
+        LOGGING.info(f"持续跟踪价格中...")
 
 
 async def main():
@@ -243,6 +271,11 @@ async def main():
                         # 更新策略参数
                         timed_task()
 
+                        # 挂单数大于零直接跳过
+                        pending_order = hold_info.newest("pending_order")
+                        if pending_order > 0:
+                            continue
+
                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
                         data_dict = json.loads(response)
                         buyLmt = float(data_dict["data"][0]["buyLmt"])
@@ -253,6 +286,7 @@ async def main():
                         agent.buyLmt, agent.sellLmt = buyLmt, sellLmt
                         long_position = hold_info.newest("long_position")
                         sell_times = hold_info.newest("sell_times")
+                        notice_change(long_position, sell_times)
 
                         # 空仓时
                         if long_position == 0:
@@ -260,7 +294,7 @@ async def main():
                             # 计算目标价格
                             target_market_price = price_dict['build_price(ideal)']
                             if target_market_price < probable_price and hold_info.newest("build_price") == 0:
-                                if not trade_auth("sell"):
+                                if not trade_auth("buy"):
                                     continue
                                 # 生成新编号
                                 execution_cycle = sqlManager.generate_execution_cycle()
@@ -270,21 +304,20 @@ async def main():
                                 agent.buy("build", execution_cycle, target_market_price, amount)
 
                                 new_info = {
-                                    "build_price", target_market_price,
-                                    "execution_cycle", execution_cycle,  # 同步新编号
-                                    "tradeFlag", "buy-only"
+                                    "pending_order": 1,
+                                    "build_price": target_market_price,
+                                    "execution_cycle": execution_cycle,  # 同步新编号
+                                    "tradeFlag": "buy-only"
                                 }
                                 hold_info.pull_dict(new_info)
                                 continue
 
                         # 未满仓,加仓
-                        if 0 < long_position <= hold_info.get("max_long_position"):
+                        if 0 < long_position < hold_info.get("max_long_position"):
                             # print(222)
-                            if len(price_dict['add_price_list(ideal)']) == 0:
-                                continue
-                            target_market_price = price_dict['add_price_list(ideal)'][0]
+                            target_market_price = price_dict['add_price_list(ideal)'][long_position-1]
                             if target_market_price < probable_price:
-                                if not trade_auth("sell"):
+                                if not trade_auth("buy"):
                                     continue
                                 # 计算目标数量
                                 amount = compute_amount("add", hold_info, target_market_price)
@@ -292,7 +325,7 @@ async def main():
                                 agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
                                 price_dict['add_price_list(ideal)'].pop(0)
 
-                                hold_info.pull("tradeFlag", "buy-only")
+                                hold_info.pull("pending_order", 1)
                                 continue
 
                         # 卖出 ============= SELL =========SELL===========SELL===================== SELL
@@ -301,9 +334,7 @@ async def main():
                         # print(333)
                         if long_position == hold_info.get("max_long_position") and sell_times <= hold_info.get(
                                 "max_sell_times"):
-                            if len(price_dict['reduce_price_list(ideal)']) == 0:
-                                continue
-                            target_market_price = price_dict['reduce_price_list(ideal)'][0]
+                            target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
                             if probable_price < target_market_price:
                                 if not trade_auth("sell"):
                                     continue
@@ -313,6 +344,8 @@ async def main():
                                 ratio = 0.3 if sell_times <= 1 else 0.2
                                 agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
                                 price_dict['reduce_price_list(ideal)'].pop(0)
+                                hold_info.pull("pending_order", 1)
+                                # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
                                 continue
 
                         # 止损
@@ -327,8 +360,8 @@ async def main():
                                 agent.sell(execution_cycle, close_price, ratio, remark=msg)
 
                                 new_info = {
-                                    "execution_cycle", execution_cycle,  # 同步新编号
-                                    "tradeFlag", "no-auth"
+                                    "pending_order": 1,
+                                    "tradeFlag": "no-auth"
                                 }
                                 hold_info.pull_dict(new_info)
 
@@ -341,6 +374,7 @@ async def main():
                             continue
 
                         except Exception as e:
+                            # 这里好像没有完全退出
                             LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
                             break
 
