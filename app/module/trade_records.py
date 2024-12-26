@@ -134,9 +134,8 @@ class TradeRecordManager:
             for record in filtered_records:
                 operation = record.operation
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
-                # if (operation == 'build' or operation == 'add') and record.state != 'canceled':
                     long_position += 1
-                if operation == 'close':
+                if operation == 'close' and record.state == 'filled':
                     return 0
             return long_position
 
@@ -218,7 +217,7 @@ class TradeRecordManager:
             for record in filtered_records:
                 operation = record.operation
                 if operation == 'close' and record.state == 'filled':
-                    raise "completed"
+                    return "completed"
             return "running"
 
         if op == 'balance_delta':
@@ -231,7 +230,6 @@ class TradeRecordManager:
             )
             for record in filtered_records:
                 operation = record.operation
-                # print(record.value)
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
                     total_value -= record.value
                 if (operation == 'reduce' or operation == 'close') and record.state == 'filled':
@@ -249,12 +247,13 @@ class TradeRecordManager:
             )
             for record in filtered_records:
                 operation = record.operation
-                if operation == 'reduce' and record.state != 'canceled':  # 可能部分成交
+                # if operation == 'reduce' and record.state != 'canceled':  # 可能部分成交，但是不能是live啊
+                if operation == 'reduce' and record.state == 'filled':
                     sell_time += 1
-                if operation == 'close' and record.state != 'canceled':
+                # if operation == 'close' and record.state != 'canceled':
+                if operation == 'close' and record.state == 'filled':
                     return 0
                     # raise Exception(f"trade_record实例不存在: {op}")
-                    # return -1
             return sell_time
 
         if op == 'build_price':
@@ -295,7 +294,7 @@ class TradeRecordManager:
             execution_cycle=kwargs.get('execution_cycle'),
             target_stock=self.target_stock,
             operation=kwargs.get('operation'),
-            # state=kwargs.get('state'),
+            # state=kwargs.get('state'),  # 默认为live
             create_time=kwargs.get('create_time'),
             fill_time=kwargs.get('fill_time'),
             client_order_id=kwargs.get('client_order_id'),
