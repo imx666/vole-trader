@@ -43,6 +43,7 @@ Logging_dict = {
         "VoleTrader-ETH": logging_config("VoleTrader-ETH"),
         "VoleTrader-BTC": logging_config("VoleTrader-BTC"),
         "VoleTrader-FLOKI": logging_config("VoleTrader-FLOKI"),
+        "VoleTrader-XRP": logging_config("VoleTrader-XRP"),
     },
     "loggers": {
         "app_01": {
@@ -82,6 +83,11 @@ Logging_dict = {
         },
         "VoleTrader-FLOKI": {
             "handlers": ["VoleTrader-FLOKI"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "VoleTrader-XRP": {
+            "handlers": ["VoleTrader-XRP"],
             "level": "DEBUG",
             "propagate": False,
         },
