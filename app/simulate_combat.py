@@ -24,7 +24,7 @@ class Account_info:
         self.total_cost = 0
 
         self.long_position = 0
-        self.max_long_position = 3
+        self.max_long_position = 2
 
         self.max_sell_times = 3
         self.sell_times = 0
@@ -169,6 +169,12 @@ def execution_plan(target_stock, long_period_candle):
                 print("超预算(减少数量)")
                 amount = expect_max_cost / target_market_price
                 total_cost = expect_max_cost
+
+            expect_min_cost = account_info.init_balance * 0.24
+            if total_cost < expect_min_cost:
+                print("不足预算(增加数量)")
+                amount = expect_min_cost / target_market_price
+                total_cost = expect_min_cost
             print(f"amount: {amount}, price: {target_market_price}")
             print(f"total_cost: {round(total_cost, 3)}")
 
@@ -197,11 +203,18 @@ def execution_plan(target_stock, long_period_candle):
 
                 amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
                 now_cost = amount * target_market_price
-                expect_max_cost = account_info.init_balance * 0.25
+                expect_max_cost = account_info.init_balance * 0.23
+                expect_max_cost = account_info.init_balance * 0.3
                 if now_cost > expect_max_cost:
                     print("超预算(减少数量)")
                     amount = expect_max_cost/target_market_price
                     now_cost = expect_max_cost
+                expect_min_cost = account_info.init_balance * 0.17
+                expect_min_cost = account_info.init_balance * 0.24
+                if now_cost < expect_min_cost:
+                    print("不足预算(增加数量)")
+                    amount = expect_min_cost / target_market_price
+                    now_cost = expect_min_cost
 
                 print(f"amount: {amount}, price: {target_market_price}")
                 print(f"total_cost: {round(now_cost, 3)}")
@@ -231,34 +244,18 @@ def execution_plan(target_stock, long_period_candle):
                 print(f"ratio: {ratio}")
                 sell(account_info, target_market_price, ratio=ratio, today_timestamp=today_timestamp)
 
-        # position = account_info.long_position
-        # target_market_price = round(account_info.hold_price + 0.1 * ATR, 10)
-        # # print(f"追加:{target_market_price}")
-        # if today_max_price > target_market_price > today_min_price and position > 0 and account_info.sell_times == account_info.max_sell_times and flag == 0:
-        #     print("减仓(+1.5N线, 追加止盈)")
-        #     sell_days.append([today_timestamp, target_market_price])
-        #     sell(account_info, target_market_price, ratio=0.3, today_timestamp=today_timestamp)
+        position = account_info.long_position
+        if position > 0 and flag == 0:
+            # 除数不为零
+            hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
+            target_market_price = round(hold_average_price - 0.5 * ATR, 10)
+            # target_market_price = round(hold_average_price, 10)
+            if today_min_price < target_market_price < today_max_price and position > 0:
+                print("平仓(-0.5N线, 成本)")
+                flag = 1
 
-        # position = account_info.long_position
-        # if position > 0 and flag == 0:
-        #     # 除数不为零
-        #     hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
-        #     target_market_price = round(hold_average_price + 0.5 * ATR, 10)
-        #     # target_market_price = round(hold_average_price, 10)
-        #     if today_min_price < target_market_price < today_max_price and position > 0:
-        #         print("平仓(+0N线, 动态追踪止损)")
-        #         flag = 1
-        #
-        #         sell_empty_days.append([today_timestamp, target_market_price])
-        #         sell(account_info, target_market_price, today_timestamp=today_timestamp)
-
-        # position = account_info.long_position
-        # target_market_price = round(account_info.open_price - 0.5 * ATR, 10)
-        # if today_min_price < target_market_price < today_min_price and position > 0 and flag == 0:
-        #     print("平仓(-0.5N线, 初始止损)")
-        #     sell_empty_days.append([today_timestamp, target_market_price])
-        #
-        #     sell(account_info, target_market_price, today_timestamp=today_timestamp)
+                sell_empty_days.append([today_timestamp, target_market_price])
+                sell(account_info, target_market_price, today_timestamp=today_timestamp)
 
         position = account_info.long_position
         stop_loss_price = round(account_info.open_price - 0.5 * ATR, 10)
@@ -346,9 +343,9 @@ if __name__ == '__main__':
     target_stock = "LUNC-USDT"
     target_stock = "BTC-USDT"
     target_stock = "ETH-USDT"
-    # target_stock = "FLOKI-USDT"
-    # target_stock = "OMI-USDT"  # 表现的太差了，应该增加持仓天数限制
-    # target_stock = "DOGE-USDT"
+    target_stock = "FLOKI-USDT"
+    target_stock = "OMI-USDT"  # 表现的太差了，应该增加持仓天数限制
+    target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
 
 
