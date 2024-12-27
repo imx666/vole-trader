@@ -24,19 +24,20 @@ class TradeRecord(Base):
     fill_time = Column(DateTime)
     client_order_id = Column(String(255))  # 客户端订单ID
     # amount = Column(Numeric(16, 10))  # 数量，使用 Float 类型
-    amount = Column(Numeric(16, 7))  # 数量，使用 Float 类型
+    # amount = Column(Numeric(16, 7))  # 数量，使用 Float 类型
+    amount = Column(Numeric(16, 8))  # 数量，使用 Float 类型
     price = Column(Numeric(16, 10))  # 价格，使用 Float 类型
     value = Column(Float)  # 成交金额，也建议使用 Float 类型
     fee = Column(Numeric(16, 7))  # 价格，使用 Float 类型
-    # remark = Column(String(255))  # 使用策略
-
-
+    remark = Column(String(255))  # 使用策略
+    delta = Column(Float)  # 价格，使用 Float 类型
+    profit_rate = Column(Float)  # 价格，使用 Float 类型
 
     def __repr__(self):
         return f"<TradeRecord(id={self.id}, execution_cycle='{self.execution_cycle}', target_stock='{self.target_stock}', operation='{self.operation}', " \
                f"state='{self.state}', create_time='{self.create_time}', fill_time='{self.fill_time}', " \
                f"client_order_id='{self.client_order_id}', price={self.price}, amount={self.amount}, " \
-               f"value={self.value}, fee={self.fee}, strategy='{self.strategy}')>"
+               f"value={self.value}, fee={self.fee}, strategy='{self.strategy}')>, remark='{self.remark}'), delta='{self.delta}'), profit_rate='{self.profit_rate}')>"
 
 
 # from pathlib import Path
@@ -59,15 +60,12 @@ class TradeRecord(Base):
 # Base.metadata.create_all(engine)
 
 
-
 DATABASE_URL = 'mysql+pymysql://root:123456@172.155.0.3:3306/trading_db'
 engine = create_engine(DATABASE_URL, pool_recycle=3600)
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 创建所有定义的表
 Base.metadata.create_all(bind=engine)
-
-
 
 
 class TradeRecordManager:
@@ -150,10 +148,11 @@ class TradeRecordManager:
             for record in filtered_records:
                 operation = record.operation
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    # print(record.amount)
                     total_max_amount += record.amount
                 if operation == 'close' and record.state == 'filled':
                     raise Exception(f"trade_record实例不存在: {op}")
-            return total_max_amount
+            return float(total_max_amount)
 
         if op == 'total_max_value':
             total_max_value = 0
@@ -187,7 +186,7 @@ class TradeRecordManager:
                     total_amount -= record.amount
                 if operation == 'close' and record.state == 'filled':
                     raise Exception(f"trade_record实例不存在: {op}")
-            return total_amount
+            return float(total_amount)
 
         if op == 'rest_value':
             total_value = 0
@@ -272,8 +271,8 @@ class TradeRecordManager:
                 TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
                 TradeRecord.operation == "build").first()
             if trade_record:
-                open_price = float(trade_record.price)
-                return open_price
+                open_price = trade_record.price
+                return float(open_price)
             else:
                 return 0
                 # raise Exception(f"trade_record实例不存在: {op}")
@@ -283,8 +282,8 @@ class TradeRecordManager:
                 TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
                 TradeRecord.operation == "add").order_by(TradeRecord.create_time.desc()).first()
             if trade_record:
-                open_price = float(trade_record.price)
-                return open_price
+                open_price = trade_record.price
+                return float(open_price)
             else:
                 raise Exception(f"trade_record实例不存在: {op}")
 
@@ -302,7 +301,8 @@ class TradeRecordManager:
             amount=kwargs.get('amount'),
             value=kwargs.get('value'),
             fee=kwargs.get('fee'),
-            strategy=self.strategy
+            strategy=self.strategy,
+            remark=kwargs.get('remark'),
         )
         self.session.add(trade_record)
         self.session.commit()
