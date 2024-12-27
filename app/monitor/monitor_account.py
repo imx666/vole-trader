@@ -4,11 +4,8 @@ import time
 import hmac
 import hashlib
 import base64
-import socket
 from datetime import datetime
-import asyncio
 import os
-import websockets
 import redis
 
 from pathlib import Path
@@ -86,7 +83,7 @@ class HoldInfo:
     def pull_dict(self, target_dict):
         self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
         self.newest_all()
-        LOGGING.info("信息已同步至redis")
+        LOGGING.info("信息同步redis成功")
 
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
@@ -102,41 +99,42 @@ class HoldInfo:
             else:
                 self.decoded_data[k.decode('utf-8')] = float(v)
 
+    def reset_all(self):
+        for key in origin_reset_list:
+            self.remove(key)
+
 
 def check_state(hold_stock, withdraw_order=False):
-    global sqlManager, geniusTrader
     LOGGING.info(f"检查更新状态: {hold_stock}")
 
-    sqlManager.target_stock = hold_stock
-    geniusTrader.target_stock = hold_stock
     # 持仓信息
-    # hold_info.target_stock = hold_stock
     hold_info = HoldInfo(hold_stock)
-
-    # 查询未成交订单并取消
-    record_list = sqlManager.filter_record(state="live")
-    if not record_list:
-        LOGGING.info("无未同步订单")
-        return
-    # hold_info = HoldInfo(hold_stock)
-    # sqlManager = TradeRecordManager(hold_stock)
-    # geniusTrader = GeniusTrader(hold_stock)
-    num = len(record_list)
-    LOGGING.info(f"未同步订单数目: {num}")
 
     # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
 
     # ready情况下不用更新
     if execution_cycle == "ready":
+        LOGGING.info("未生成执行编号,跳过同步")
         return
 
-    # time.sleep(5)  # 给予极端部分成交的情况充足的时间，尽量避免部分成交这种情况
+    # 查询未成交订单并取消
+    sqlManager = TradeRecordManager(hold_stock, strategy_name=strategy_name)
+    record_list_1 = sqlManager.filter_record(state="live")
+    record_list_2 = sqlManager.filter_record(state="partially_filled")
+    record_list = record_list_1 + record_list_2
+    if not record_list:
+        LOGGING.info("无live和part订单,跳过同步")
+        return
+    LOGGING.info(f"live和part订单数目: {len(record_list)}")
+
+    time.sleep(3)  # 给予极端部分成交的情况充足的时间，因为部分成交也会触发这个函数
+    geniusTrader = GeniusTrader(hold_stock, LOGGING=LOGGING)
     for client_order_id in record_list:
         # 查询执行结果
         result = geniusTrader.execution_result(client_order_id=client_order_id)
+        LOGGING.info(f"订单详情: {result}")
 
-        LOGGING.info(result)
         deal_data = result['data'][0]
         price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
         state = deal_data["state"]
@@ -150,6 +148,7 @@ def check_state(hold_stock, withdraw_order=False):
             fee = -fee * price  # 买入时，手续费是按照标的物计算的
         if side == "sell":
             value = value + fee
+            fee = -fee
 
         if state == "filled" or state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
             fill_time = int(deal_data["fillTime"])
@@ -178,10 +177,17 @@ def check_state(hold_stock, withdraw_order=False):
         "long_position": long_position,
         "sell_times": sell_times
     }
+    LOGGING.info(new_info)
 
     # 如果此编号的状态是已完成，周期结束后，遇到close的情况下
-    if sqlManager.get(execution_cycle, "execution_state") == "completed":
+    execution_state = sqlManager.get(execution_cycle, "execution_state")
+    if execution_state == "completed":
         LOGGING.info("平仓已经完成，重置redis信息")
+        hold_info.remove('add_price_list(ideal)')
+        hold_info.remove('reduce_price_list(ideal)')
+        hold_info.remove('close_price(ideal)')
+
+
         # 重置余额
         balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
         init_balance = 100 + balance_delta
@@ -189,14 +195,14 @@ def check_state(hold_stock, withdraw_order=False):
         new_info = {
            'execution_cycle': "ready",  # 重置编码
            'pending_order': 0,
-           'tradeFlag': 'all-auth',
+           'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
+           'long_position': 0,
+           'sell_times': 0,
+           'build_price': 0,
            'init_balance': init_balance,
            'risk_rate': 0.0035,
            'max_long_position': 4,
            'max_sell_times': 3,
-           'long_position': 0,
-           'sell_times': 0,
-           'build_price': 0,
         }
     hold_info.pull_dict(new_info)
 
@@ -272,14 +278,21 @@ origin_int_list = [
     "sell_times",
 ]
 
-
-# 交易api
-geniusTrader = GeniusTrader()
+origin_reset_list = [
+    "add_price_list(ideal)",
+    "reduce_price_list(ideal)",
+]
 
 strategy_name = "TURTLE"
-target_stock = 'sb'
-# 数据库记录
-sqlManager = TradeRecordManager(target_stock=target_stock, strategy_name=strategy_name)
-# sqlManager = TradeRecordManager("moni")
 
+
+
+if __name__ == '__main__':
+    hold_stock = "FLOKI-USDT"
+    hold_info = HoldInfo(hold_stock)
+    execution_cycle = hold_info.get("execution_cycle")
+    print(execution_cycle)
+    # long_position = sqlManager.get(execution_cycle, "long_position")
+    # print(long_position)
+    check_state(hold_info)
 
