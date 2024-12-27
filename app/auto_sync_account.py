@@ -1,5 +1,7 @@
 import json
 import socket
+import time
+
 import redis
 from datetime import datetime, timezone, timedelta
 
@@ -32,6 +34,7 @@ target_stock_li = [
     "ETH-USDT",
     "DOGE-USDT",
     "FLOKI-USDT",
+    "XRP-USDT",
     # "LUNC-USDT",
     # "OMI-USDT",
     # "PEPE-USDT",
@@ -76,12 +79,14 @@ async def main():
                         response = json.loads(response)
                         if response.get("data"):
                             update_chain(response)
+                            LOGGING.info(f"持续监听账户中...")
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
                             await websocket.send('ping')
-                            res = await websocket.recv()
-                            LOGGING.info(f"收到: {res}")
+                            await websocket.recv()
+                            # res = await websocket.recv()
+                            # LOGGING.info(f"收到: {res}")
                             continue
 
                         except Exception as e:
@@ -102,7 +107,17 @@ async def main():
             LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
             await asyncio.sleep(wait_time)
 
+        except asyncio.TimeoutError:
+            print("The connection attempt timed out during the handshake.")
+        except websockets.exceptions.InvalidHandshake:
+            print("Invalid handshake occurred.")
+
         except Exception as e:
+            e = str(e)
+            if "timed out" in e:
+                LOGGING.error(f"连接断2222222，请检查……其他 {e}")
+                time.sleep(10)
+                continue
             LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
             break
 
