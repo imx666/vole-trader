@@ -21,7 +21,7 @@ import pytz
 # LOGGING = logging.getLogger("app_01")
 
 
-class LOGGING:
+class LOGGING_2:
     @staticmethod
     def info(message):
         print(message)
@@ -48,7 +48,7 @@ def beijing_time(timestamp_ms):
 
 
 class GeniusTrader:
-    def __init__(self, target_stock=None):
+    def __init__(self, target_stock=None, LOGGING=None):
         import os
         from pathlib import Path
         from dotenv import load_dotenv
@@ -83,19 +83,25 @@ class GeniusTrader:
         self.wilson_favourite_stock_list = []
         self.cash_resources = 0
         self.target_stock = target_stock
+        if LOGGING is None:
+            self.LOGGING = LOGGING_2
+        else:
+            self.LOGGING = LOGGING
+
+
 
     def account(self):
         """账户信息"""
-        LOGGING.info("\n")
+        self.LOGGING.info("\n")
 
         result = self.accountAPI.get_account_balance()
-        # LOGGING.info(result)
+        # self.LOGGING.info(result)
 
         data = result['data'][0]
         totalEq = data['totalEq']
-        LOGGING.info("=====================资金用户===========================")
+        self.LOGGING.info("=====================资金用户===========================")
         totalEq = round(float(totalEq), 2)
-        LOGGING.info(f'总资产: {totalEq} 美元')
+        self.LOGGING.info(f'总资产: {totalEq} 美元')
 
         details = data['details']
         for item in details:
@@ -111,18 +117,18 @@ class GeniusTrader:
             # cashBal = round(float(item['cashBal']), 2)
 
             if currency == "USDT":
-                LOGGING.info(f"现金储备: {balance} USDT")
+                self.LOGGING.info(f"现金储备: {balance} USDT")
             else:
-                # LOGGING.info(f"币种: {currency}, 总权益: {balance}, 可用余额: {cashBal}, 可用保证金: {availEq}")
-                LOGGING.info(f"{currency}, 权益(可交易): {balance}, 现价: {eqUsd} USDT")
+                # self.LOGGING.info(f"币种: {currency}, 总权益: {balance}, 可用余额: {cashBal}, 可用保证金: {availEq}")
+                self.LOGGING.info(f"{currency}, 权益(可交易): {balance}, 现价: {eqUsd} USDT")
 
     def stock_handle_info(self, custom_stock):
         """个股持仓信息"""
-        LOGGING.info(f"{custom_stock} 持有信息")
+        self.LOGGING.info(f"{custom_stock} 持有信息")
 
         sort_name = custom_stock.split('-')[0]
         result = self.accountAPI.get_account_balance()
-        # LOGGING.info(result)
+        # self.LOGGING.info(result)
 
         details = result['data'][0]['details']
         for item in details:
@@ -138,14 +144,14 @@ class GeniusTrader:
             # cashBal = round(float(item['cashBal']), 2)
 
             if currency == "USDT":
-                LOGGING.info(f"现金储备: {round(balance, 2)} USDT")
+                self.LOGGING.info(f"现金储备: {round(balance, 2)} USDT")
             if currency == sort_name:
-                LOGGING.info(f"{currency}, 权益: {round(balance, 2)}, 现价: {eqUsd} USDT")
+                self.LOGGING.info(f"{currency}, 权益: {round(balance, 2)}, 现价: {eqUsd} USDT")
                 return balance
 
     def stock_info(self, custom_stock):
         """个股信息"""
-        LOGGING.info("\n")
+        self.LOGGING.info("\n")
 
         # 基本信息
         result = self.accountAPI.get_instruments(instType="SPOT", instId=custom_stock)
@@ -153,14 +159,14 @@ class GeniusTrader:
         instId = result['data'][0]['instId']
         state = result['data'][0]['state']
         state = "可交易" if state == "live" else state == "不可交易"
-        LOGGING.info(f"{instId}[{state}]")
-        LOGGING.info(f"最小下单数量: {min_account}")
+        self.LOGGING.info(f"{instId}[{state}]")
+        self.LOGGING.info(f"最小下单数量: {min_account}")
 
         # 获取单个产品行情信息,成交价，成交量什么的
         result = self.marketDataAPI.get_ticker(instId=custom_stock)
         # print(result)
         last_price = result['data'][0]['last']
-        LOGGING.info(f"现成交价: {last_price}")
+        self.LOGGING.info(f"现成交价: {last_price}")
 
         # 限价
         result = self.publicDataAPI.get_price_limit(instId=custom_stock, )
@@ -172,10 +178,10 @@ class GeniusTrader:
             average_price = 0.5 * (buyLmt + sellLmt)
             # forecast_transaction_price = round(min_account * average_price, 4)
             forecast_transaction_price = round(min_account * last_price, 4)
-            LOGGING.info(f"最高买价: {buyLmt_str}")
-            LOGGING.info(f"最低卖价: {sellLmt_str}")
-            LOGGING.info(f"均价: {round(average_price, 10)}")
-            LOGGING.info(f"预计下单价格(最少): {forecast_transaction_price} USDT")
+            self.LOGGING.info(f"最高买价: {buyLmt_str}")
+            self.LOGGING.info(f"最低卖价: {sellLmt_str}")
+            self.LOGGING.info(f"均价: {round(average_price, 10)}")
+            self.LOGGING.info(f"预计下单价格(最少): {forecast_transaction_price} USDT")
 
             if forecast_transaction_price < 3 and min_account > 100:
                 dicter = {
@@ -185,8 +191,8 @@ class GeniusTrader:
                 }
                 self.wilson_favourite_stock_list.append(dicter)
         except Exception as e:
-            # LOGGING.info(e)
-            LOGGING.info(f"查询限价失败，或无限价")
+            # self.LOGGING.info(e)
+            self.LOGGING.info(f"查询限价失败，或无限价")
             pass
 
         # try:
@@ -198,9 +204,9 @@ class GeniusTrader:
         #     taker = fee_rates['data'][0]['taker']
         #     maker = "{:.2%}".format(abs(float(maker)))
         #     taker = "{:.2%}".format(abs(float(taker)))
-        #     LOGGING.info(f"挂单费率: {maker}\n吃单费率(立即成交): {taker}")
+        #     self.LOGGING.info(f"挂单费率: {maker}\n吃单费率(立即成交): {taker}")
         # except Exception as e:
-        #     # LOGGING.info(e)
+        #     # self.LOGGING.info(e)
         #     pass
 
     def stock_candle(self, custom_stock, after=None, period='1D'):
@@ -230,14 +236,14 @@ class GeniusTrader:
             self.stock_info(instId)
 
         for item in self.wilson_favourite_stock_list:
-            LOGGING.info(item['target_stock'])
-            LOGGING.info(item['预测下单价格'])
-            LOGGING.info(item['最小下单数量'])
-            LOGGING.info("\n")
+            self.LOGGING.info(item['target_stock'])
+            self.LOGGING.info(item['预测下单价格'])
+            self.LOGGING.info(item['最小下单数量'])
+            self.LOGGING.info("\n")
 
     def buy_order(self, amount, price=None):
         """买入"""
-        LOGGING.info("\n")
+        self.LOGGING.info("\n")
 
         order_type = "limit"
         tgtCcy = ""
@@ -262,22 +268,22 @@ class GeniusTrader:
         )
 
         if result['code'] == '0':
-            LOGGING.info(f"下单成功: {result}")
-            # LOGGING.info(result)
+            self.LOGGING.info(f"下单成功: {result}")
+            # self.LOGGING.info(result)
             if order_type == "market":
                 self.execution_result(result)
             # self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
-            LOGGING.info(f"下单失败: {sMsg}")
-            LOGGING.info(result)
+            self.LOGGING.info(f"下单失败: {sMsg}")
+            self.LOGGING.info(result)
             raise Exception(f"下单失败: {sMsg}")
 
         return client_order_id, timestamp_ms
 
     def sell_order(self, amount, price=None):
         """卖出"""
-        LOGGING.info("\n")
+        self.LOGGING.info("\n")
 
         order_type = "limit"
         if price is None:
@@ -299,15 +305,15 @@ class GeniusTrader:
         )
 
         if result['code'] == '0':
-            LOGGING.info(f"下单成功: {result}")
-            # LOGGING.info(result)
+            self.LOGGING.info(f"下单成功: {result}")
+            # self.LOGGING.info(result)
             if order_type == "market":
                 self.execution_result(result)
             # self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
-            LOGGING.info(f"下单失败: {sMsg}")
-            LOGGING.info(result)
+            self.LOGGING.info(f"下单失败: {sMsg}")
+            self.LOGGING.info(result)
             raise Exception(f"下单失败: {sMsg}")
 
         return client_order_id, timestamp_ms
@@ -316,13 +322,13 @@ class GeniusTrader:
         # 撤单
         result = self.tradeAPI.cancel_order(instId=self.target_stock, clOrdId=client_order_id)
         if result['code'] == '0':
-            LOGGING.info("撤单成功")
-            LOGGING.info(result)
+            self.LOGGING.info("撤单成功")
+            self.LOGGING.info(result)
             # self.stock_handle_info(target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
-            LOGGING.info(f"撤单失败: {sMsg}")
-            LOGGING.info(result)
+            self.LOGGING.info(f"撤单失败: {sMsg}")
+            self.LOGGING.info(result)
             # 抛出异常
             raise Exception(f"撤单失败: {sMsg}")
 
@@ -358,28 +364,28 @@ class GeniusTrader:
             create_time = deal_data["cTime"]
             create_time = beijing_time(create_time)
             fill_time = "未执行" if deal_data["fillTime"] == '' else beijing_time(deal_data["fillTime"])
-            LOGGING.info(f"\n")
-            LOGGING.info(f"{custom_stock}")
-            LOGGING.info(f"{side}[{state}]")
-            LOGGING.info(f"订单号: {client_order_id}")
-            LOGGING.info(f"委托价格: {price_str}")
-            LOGGING.info(f"委托数量: {account}")
-            LOGGING.info(f"共{side}: {round(price * account, 3)} USDT")
-            LOGGING.info(f"创建时间: {create_time}")
-            LOGGING.info(f"成交时间: {fill_time}")
+            self.LOGGING.info(f"\n")
+            self.LOGGING.info(f"{custom_stock}")
+            self.LOGGING.info(f"{side}[{state}]")
+            self.LOGGING.info(f"订单号: {client_order_id}")
+            self.LOGGING.info(f"委托价格: {price_str}")
+            self.LOGGING.info(f"委托数量: {account}")
+            self.LOGGING.info(f"共{side}: {round(price * account, 3)} USDT")
+            self.LOGGING.info(f"创建时间: {create_time}")
+            self.LOGGING.info(f"成交时间: {fill_time}")
 
             # if result['code'] == '0':
-            #     LOGGING.info("查询成功")
-            #     LOGGING.info(result)
+            #     self.LOGGING.info("查询成功")
+            #     self.LOGGING.info(result)
             # else:
             #     sMsg = result["data"][0]["sMsg"]
-            #     LOGGING.info(f"查询失败: {sMsg}")
-            #     LOGGING.info(result)
+            #     self.LOGGING.info(f"查询失败: {sMsg}")
+            #     self.LOGGING.info(result)
         return pending_list
 
     def execution_result(self, result_dict=None, client_order_id=None, target_and_ordId=[]):
         """执行结果"""
-        LOGGING.info("\n")
+        self.LOGGING.info("\n")
 
         if result_dict is not None:
             # order_id = result_dict['data'][0]["ordId"]
@@ -405,14 +411,15 @@ class GeniusTrader:
         if result['code'] != '0':
             # sMsg = result["data"][0]["sMsg"]
             sMsg = result['msg']
-            LOGGING.info(result)
+            self.LOGGING.info(result)
             raise Exception(f"查询失败: {sMsg}")
 
-        LOGGING.info(result['msg'])
+        self.LOGGING.info(result['msg'])
 
         deal_data = result['data'][0]
         side = deal_data["side"]
         side = "买入" if side == "buy" else "卖出"
+        side222 = "花费" if side == "buy" else "收到"
         price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
         price = float(price_str)
         amount = float(deal_data["sz"])
@@ -428,22 +435,22 @@ class GeniusTrader:
         create_time = beijing_time(create_time)
         fill_time = "未执行" if deal_data["fillTime"] == '' else beijing_time(deal_data["fillTime"])
 
-        # LOGGING.info(f"{client_order_id[:-10]}: {side}[{state}]")
-        LOGGING.info(f"{target_stock}")
-        LOGGING.info(f"{side}[{state}]")
-        LOGGING.info(f"委托价格: {price_str}")
-        LOGGING.info(f"委托数量: {amount}")
-        # LOGGING.info(f"共{side}: {round(price * amount, 3)} USDT")
-        LOGGING.info(f"共{side}: {price * amount} USDT")
+        # self.LOGGING.info(f"{client_order_id[:-10]}: {side}[{state}]")
+        self.LOGGING.info(f"{target_stock}")
+        self.LOGGING.info(f"{side}[{state}]")
+        self.LOGGING.info(f"委托价格: {price_str}")
+        self.LOGGING.info(f"委托数量: {amount}")
+        # self.LOGGING.info(f"共{side}: {round(price * amount, 3)} USDT")
+        self.LOGGING.info(f"共{side222}: {price * amount} USDT")
         if side == "卖出":
             fee = -fee
-            LOGGING.info(f"手续费: {round(fee, 10)} USDT")
+            self.LOGGING.info(f"手续费: {round(fee, 10)} USDT")
         else:
             fee = -fee * price  # 买入时，手续费是按照标的物计算的
-            # LOGGING.info(f"手续费: {round(fee, 10)} {target_stock.split('-')[0]}")
-            LOGGING.info(f"手续费: {round(fee, 10)} USDT")
-        LOGGING.info(f"创建时间: {create_time}")
-        LOGGING.info(f"成交时间: {fill_time}")
+            # self.LOGGING.info(f"手续费: {round(fee, 10)} {target_stock.split('-')[0]}")
+            self.LOGGING.info(f"手续费: {round(fee, 10)} USDT")
+        self.LOGGING.info(f"创建时间: {create_time}")
+        self.LOGGING.info(f"成交时间: {fill_time}")
 
         return result
 

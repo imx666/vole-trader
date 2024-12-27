@@ -9,8 +9,9 @@ geniusTrader = GeniusTrader("Assistant")
 
 # 数据库记录
 sqlManager = TradeRecordManager("Assistant")
+# sqlManager = TradeRecordManager("TURTLE")
 
-class LOGGING:
+class LOGGING_2:
     @staticmethod
     def info(message):
         print(message)
@@ -22,7 +23,7 @@ class LOGGING:
 
 class TradeAssistant:
     # def __init__(self, sqlManager, geniusTrader, trade_type):
-    def __init__(self, strategy_name, target_stock, trade_type):
+    def __init__(self, strategy_name, target_stock, trade_type, LOGGING=None):
         global geniusTrader, sqlManager
         sqlManager.strategy = strategy_name
         sqlManager.target_stock = target_stock
@@ -34,25 +35,25 @@ class TradeAssistant:
         self.buyLmt = None
         self.sellLmt = None
         self.msg = None
+        
+        if LOGGING is None:
+            self.LOGGING = LOGGING_2
+        else:
+            self.LOGGING = LOGGING
+            geniusTrader.LOGGING = LOGGING
 
-    def show_moment(self, target_market_price):
+    def show_moment(self, target_market_price, amount):
         if self.msg is not None:
-            LOGGING.info(self.msg)
-        LOGGING.info(f"目标价: {target_market_price}")
-        LOGGING.info(f"buyLmt: {self.buyLmt}, sellLmt: {self.sellLmt}")
+            self.LOGGING.info(f"remark: {self.msg}")
         probable_price = (self.buyLmt + self.sellLmt) / 2
-        LOGGING.info(f"probable_price: {round(probable_price, 6)}")
+        self.LOGGING.info(f"现价(可能): {round(probable_price, 6)}")
+        self.LOGGING.info(f"目标价: {target_market_price}, 数量: {amount}")
+        self.LOGGING.info(f"买限: {self.buyLmt}, 卖限: {self.sellLmt}")
 
     def sell(self, execution_cycle, target_market_price, ratio, remark=None):
         total_max_amount = self.sqlManager.get(execution_cycle, "total_max_amount")
-        total_max_amount = float(total_max_amount)
-        # if ratio == 1:
-        #     amount = total_max_amount
-        #     operation = "close"
-        # else:
         target_amount = total_max_amount * ratio
         rest_amount = self.sqlManager.get(execution_cycle, "rest_amount")
-        rest_amount = float(rest_amount)
         amount = rest_amount if rest_amount < target_amount else target_amount
         operation = "close" if rest_amount <= target_amount else "reduce"
 
@@ -60,9 +61,9 @@ class TradeAssistant:
             self.simulate(execution_cycle, operation, target_market_price, amount)
             return
 
-        client_order_id, timestamp_ms = self.geniusTrader.sell_order(amount=amount, price=target_market_price)
         self.msg = operation if remark is None else remark
-        self.show_moment(target_market_price)
+        self.show_moment(target_market_price, amount)
+        client_order_id, timestamp_ms = self.geniusTrader.sell_order(amount=amount, price=target_market_price)
 
         # 添加一条新记录
         self.sqlManager.add_trade_record(
@@ -73,6 +74,7 @@ class TradeAssistant:
             price=target_market_price,
             amount=amount,
             value=round(target_market_price * amount, 3),
+            remark=remark if remark is not None else None,
         )
 
     def buy(self, operation, execution_cycle, target_market_price, amount, remark=None):
@@ -80,9 +82,9 @@ class TradeAssistant:
             self.simulate(execution_cycle, operation, target_market_price, amount)
             return
 
-        client_order_id, timestamp_ms = self.geniusTrader.buy_order(amount=amount, price=target_market_price)
         self.msg = operation if remark is None else remark
-        self.show_moment(target_market_price)
+        self.show_moment(target_market_price, amount)
+        client_order_id, timestamp_ms = self.geniusTrader.buy_order(amount=amount, price=target_market_price)
 
         # 添加一条新记录
         self.sqlManager.add_trade_record(
@@ -93,6 +95,7 @@ class TradeAssistant:
             price=target_market_price,
             amount=amount,
             value=round(target_market_price * amount, 3),
+            remark=remark if remark is not None else None,
         )
 
     def simulate(self, execution_cycle, operation, target_market_price, amount):
