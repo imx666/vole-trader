@@ -1,5 +1,7 @@
 import json
 import socket
+import time
+
 import redis
 from datetime import datetime, timezone, timedelta
 
@@ -65,46 +67,57 @@ hold_info = HoldInfo(target_stock)
 execution_cycle = hold_info.get("execution_cycle")
 
 # 交易助手
-agent = TradeAssistant('TURTLE', target_stock, trade_type="actual")
-# agent = TradeAssistant(sqlManager, geniusTrader, trade_type="actual")
-# agent = TradeAssistant(sqlManager, geniusTrader, trade_type="simulate")
+agent = TradeAssistant('TURTLE', target_stock, trade_type="actual", LOGGING=LOGGING)
+# agent = TradeAssistant('TURTLE', target_stock, trade_type="simulate")
 
 
 # 数据库记录
 sqlManager = TradeRecordManager(target_stock, "TURTLE")
 
+auth_time = 0
 
 def trade_auth(side):
-    # pending_order = hold_info.newest("pending_order")
-    # if pending_order > 0:
-    #     LOGGING.info(f"有 {pending_order} 个挂单未成交,拒绝继续挂单")
-    #     return False
+    global auth_time
+    auth_time += 1
     tradeFlag = hold_info.newest("tradeFlag")
-    if tradeFlag == "all-auth":
-        LOGGING.info("trade approved")
-        return True
 
-    if tradeFlag == "no-auth":
-        LOGGING.warning("no access to trade")
+    record_list_1 = sqlManager.filter_record(state="live")
+    record_list_2 = sqlManager.filter_record(state="partially_filled")
+    record_list = record_list_1 + record_list_2
+    if record_list:
+        if auth_time == 1:
+            LOGGING.warning(f"<{side}>: no access to trade,数据库中仍然有挂单未同步")
         return False
 
+    if tradeFlag == "all-auth":
+        LOGGING.info(f"<{side}>: trade approved")
+        return True
+
     if tradeFlag == "buy-only" and side == "buy":
-        LOGGING.info("trade approved")
+        LOGGING.info(f"<{side}>: trade approved")
         return True
 
     if tradeFlag == "sell-only" and side == "sell":
-        LOGGING.info("trade approved")
+        LOGGING.info(f"<{side}>: trade approved")
         return True
 
-    LOGGING.warning("no access to trade")
+    if tradeFlag == "no-auth":
+        if auth_time == 1:
+            LOGGING.warning(f"<{side}>: no access to trade")
+        return False
+
+    if auth_time == 1:
+        LOGGING.warning(f"<{side}>: no access to trade")
     return False
 
 
-def compute_amount(operation, hold_info, target_market_price):
+def compute_amount(operation, target_market_price):
     amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / hold_info.get("ATR"), 5)
-    rate = 0.3 if operation == "build" else 0.25
-    expect_max_cost = hold_info.get("init_balance") * rate
-    expect_min_cost = hold_info.get("init_balance") * 0.15
+    # max_rate = 0.31 if operation == "build" else 0.231
+    max_rate, min_rate = 0.31, 0.231
+    # min_rate = 0.24 if operation == "build" else 0.171
+    expect_max_cost = hold_info.get("init_balance") * max_rate
+    expect_min_cost = hold_info.get("init_balance") * min_rate
     now_cost = amount * target_market_price
     if now_cost > expect_max_cost:
         LOGGING.info("超预算(减少数量)")
@@ -117,12 +130,21 @@ def compute_amount(operation, hold_info, target_market_price):
 
 
 def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
+    LOGGING.info("计算目标价")
     global price_dict
 
     # 计算目标价格
-    long_position = hold_info.newest("long_position")
-    build_price = hold_info.newest("build_price")
-    stop_loss_price = round(build_price - 0.5 * ATR, 10)
+    # long_position = hold_info.newest("long_position")
+    # build_price = hold_info.newest("build_price")
+    # execution_cycle = hold_info.get("execution_cycle")
+    long_position = sqlManager.get(execution_cycle, "long_position")
+    build_price = sqlManager.get(execution_cycle, "build_price")
+    total_max_value = sqlManager.get(execution_cycle, "total_max_value")
+    total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
+    hold_average_price = total_max_value / total_max_amount if total_max_amount > 0 else build_price
+
+    # stop_loss_price = round(build_price - 0.5 * ATR, 10)
+    stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
 
     if stop_loss_price > down_Dochian_price:
         close_price = stop_loss_price
@@ -133,7 +155,7 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
 
     price_dict_2_redis = {
         'ATR': ATR,
-        '平仓价(-0.5N线)': '未建仓' if build_price == 0 else stop_loss_price,
+        '平仓价(-0.5N线)': '未建仓' if long_position == 0 else stop_loss_price,
     }
 
     price_dict = {
@@ -150,20 +172,13 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         hold_info.remove('build_price(ideal)')
         add_price_list = []
         reduce_price_list = []
-        build_price = hold_info.newest("build_price")
-        # long_position = hold_info.newest("long_position")
-        # sell_times = hold_info.newest("sell_times")
 
-        # for i in range(long_position, hold_info.get("max_long_position")):
         for i in range(1, hold_info.get("max_long_position")):
             target_market_price = round(build_price + i * 0.5 * ATR, 10)
-            # target_market_price = build_price + i * 0.5 * ATR
             add_price_list.append(target_market_price)
 
-        # for i in range(sell_times, hold_info.get("max_sell_times")):
-        for i in range(1, hold_info.get("max_sell_times")):
+        for i in range(0, hold_info.get("max_sell_times")):
             target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
-            # target_market_price = build_price + (0.5 * i + 2) * ATR
             reduce_price_list.append(target_market_price)
 
         price_dict_2_redis['close_price(ideal)'] = close_price
@@ -176,11 +191,10 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
 
     hold_info.pull_dict(price_dict_2_redis)
 
-    # return price_dict
-
 
 def notice_change(long_position, sell_times):
     if long_position != hold_info.get("long_position") or sell_times != hold_info.get("sell_times"):
+        LOGGING.info("持仓发生变化,立即拉取redis")
         load_index_and_compute_price(target_stock)
 
 
@@ -191,8 +205,7 @@ def load_index_and_compute_price(target_stock):
         raise Exception(f"load_reference_index: redis: {target_stock}股票参数不存在")
 
     name = name.decode()
-    LOGGING.info("开始更新每日参数")
-    LOGGING.info(f"参数更新的最后日期: {name}")
+    LOGGING.info(f"开始更新参数, 上次更新时间: {name}")
 
     # 获取整个哈希表的所有字段和值
     all_info = redis_okx.hgetall(f"common_index:{target_stock}")
@@ -220,14 +233,15 @@ def timed_task():
     minute = now_bj.minute  # 第几分
 
     if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
-        # if hour_of_day in [0, 4, 8, 12, 16, 20, 13] and minute == 5:
+    # if hour_of_day in [0, 4, 8, 12, 16, 20, 13] and minute == 17:
         global DayStamp
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
         if DayStamp is not None and current_time == DayStamp:
             return
 
-        res = send_wx_info("读取最新策略参数", f"{current_time}", supreme_auth=True)
-        LOGGING.info(res)
+        # # 发微信
+        # res = send_wx_info("读取最新策略参数", f"{current_time}", supreme_auth=True)
+        # LOGGING.info(res)
 
         load_index_and_compute_price(target_stock)
         DayStamp = current_time
@@ -248,6 +262,7 @@ async def main():
     global execution_cycle
     while True:
         reconnect_attempts = 0
+        relink = 0
 
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/public') as websocket:
@@ -266,17 +281,23 @@ async def main():
 
                 # 持续监听增量数据
                 while True:
+                    if relink is True:
+                        break
+
                     try:
 
                         # 更新策略参数
                         timed_task()
 
+                        # 获取最新报价
+                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
+
                         # 挂单数大于零直接跳过
                         pending_order = hold_info.newest("pending_order")
                         if pending_order > 0:
+                            # print(12345678)
                             continue
 
-                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
                         data_dict = json.loads(response)
                         buyLmt = float(data_dict["data"][0]["buyLmt"])
                         sellLmt = float(data_dict["data"][0]["sellLmt"])
@@ -286,6 +307,8 @@ async def main():
                         agent.buyLmt, agent.sellLmt = buyLmt, sellLmt
                         long_position = hold_info.newest("long_position")
                         sell_times = hold_info.newest("sell_times")
+
+                        # 更新策略参数
                         notice_change(long_position, sell_times)
 
                         # 空仓时
@@ -293,23 +316,24 @@ async def main():
                             # print(111)
                             # 计算目标价格
                             target_market_price = price_dict['build_price(ideal)']
-                            if target_market_price < probable_price and hold_info.newest("build_price") == 0:
+                            if target_market_price < probable_price:
                                 if not trade_auth("buy"):
                                     continue
                                 # 生成新编号
                                 execution_cycle = sqlManager.generate_execution_cycle()
                                 # 计算目标数量
-                                amount = compute_amount("build", hold_info, target_market_price)
+                                amount = compute_amount("build", target_market_price)
                                 # 买入
-                                agent.buy("build", execution_cycle, target_market_price, amount)
+                                agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
 
                                 new_info = {
                                     "pending_order": 1,
-                                    "build_price": target_market_price,
+                                    # "build_price": target_market_price,
                                     "execution_cycle": execution_cycle,  # 同步新编号
                                     "tradeFlag": "buy-only"
                                 }
                                 hold_info.pull_dict(new_info)
+                                time.sleep(10)
                                 continue
 
                         # 未满仓,加仓
@@ -320,12 +344,13 @@ async def main():
                                 if not trade_auth("buy"):
                                     continue
                                 # 计算目标数量
-                                amount = compute_amount("add", hold_info, target_market_price)
+                                amount = compute_amount("add", target_market_price)
                                 # 买入
                                 agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
                                 price_dict['add_price_list(ideal)'].pop(0)
 
                                 hold_info.pull("pending_order", 1)
+                                time.sleep(10)
                                 continue
 
                         # 卖出 ============= SELL =========SELL===========SELL===================== SELL
@@ -346,6 +371,7 @@ async def main():
                                 price_dict['reduce_price_list(ideal)'].pop(0)
                                 hold_info.pull("pending_order", 1)
                                 # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
+                                time.sleep(10)
                                 continue
 
                         # 止损
@@ -363,16 +389,26 @@ async def main():
                                     "pending_order": 1,
                                     "tradeFlag": "no-auth"
                                 }
+                                time.sleep(10)
                                 hold_info.pull_dict(new_info)
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
-                            LOGGING.info(f"发送ping")
+                            # LOGGING.info(f"发送ping")
                             await websocket.send('ping')
-                            res = await websocket.recv()
-                            LOGGING.info(f"收到: {res}")
+                            await websocket.recv()
+                            # res = await websocket.recv()
+                            # LOGGING.info(f"收到: {res}")
                             continue
 
+                        except websockets.exceptions.ConnectionClosedError as e:
+                            LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
+                            relink = 1
+                            break
+                        except websockets.exceptions.ConnectionClosedOK as e:
+                            relink = 1
+                            LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
+                            break
                         except Exception as e:
                             # 这里好像没有完全退出
                             LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
@@ -380,6 +416,13 @@ async def main():
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
+            reconnect_attempts += 1
+            wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
+            LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+
+        except asyncio.TimeoutError:
+            print("Timeout reading from socket.")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
             LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
@@ -394,6 +437,10 @@ async def main():
 
         except Exception as e:
             LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
+            if "Timeout reading from socket" in str(e):
+                LOGGING.info("Timeout , and reconnecting")
+                time.sleep(10)
+                continue
             break
 
 
