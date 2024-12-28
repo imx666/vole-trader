@@ -347,7 +347,6 @@ async def main():
                                 amount = compute_amount("add", target_market_price)
                                 # 买入
                                 agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
-                                price_dict['add_price_list(ideal)'].pop(0)
 
                                 hold_info.pull("pending_order", 1)
                                 time.sleep(10)
@@ -368,7 +367,6 @@ async def main():
                                 # 卖出
                                 ratio = 0.3 if sell_times <= 1 else 0.2
                                 agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
-                                price_dict['reduce_price_list(ideal)'].pop(0)
                                 hold_info.pull("pending_order", 1)
                                 # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
                                 time.sleep(10)
