@@ -1,5 +1,4 @@
-import redis
-
+# import redis
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -14,15 +13,21 @@ REDIS_PORT = os.getenv("REDIS_PORT")
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_DB_okx = os.getenv("REDIS_DB_okx")
 
-# REDIS_HOST = '127.0.0.1'
-# REDIS_HOST = '172.155.0.4'
-# REDIS_PORT = 6379
-# REDIS_PASSWORD = 123456  # 如果有密码，可以在这里指定
-# REDIS_DB = 8  # 默认数据库编号
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT = os.getenv("MYSQL_PORT")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+
 
 # 构建 Redis 连接字符串
 redis_url = f'redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_okx}'
 
+# 构建 mysql 连接字符串
+DATABASE_URL = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/trading_db'
+
+
+# print(redis_url)
+# print(DATABASE_URL)
 # # 连接 Redis
 # redis_okx = redis.Redis.from_url(redis_url)
 #
