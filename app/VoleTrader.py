@@ -10,7 +10,7 @@ import websockets
 
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
-from module.redis_url import redis_url
+from utils.url_center import redis_url
 from module.trade_records import TradeRecordManager
 from module.trade_assistant import TradeAssistant
 from monitor.monitor_account import check_state
@@ -132,6 +132,7 @@ def compute_amount(operation, target_market_price):
 def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
     LOGGING.info("计算目标价")
     global price_dict
+    print(price_dict)
 
     # 计算目标价格
     # long_position = hold_info.newest("long_position")
@@ -163,6 +164,11 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         'close_price(ideal)': close_price,
         'close_type': close_type,
     }
+    print(price_dict)
+
+
+    # long_position = hold_info.newest("long_position")
+
 
     if long_position == 0:
         price_dict_2_redis['build_price(ideal)'] = up_Dochian_price
@@ -188,6 +194,8 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         price_dict['close_type'] = close_type
         price_dict['add_price_list(ideal)'] = add_price_list
         price_dict['reduce_price_list(ideal)'] = reduce_price_list
+        print(add_price_list)
+        print(price_dict)
 
     hold_info.pull_dict(price_dict_2_redis)
 
@@ -259,7 +267,7 @@ def timed_task():
 
 
 async def main():
-    global execution_cycle
+    global execution_cycle, price_dict
     while True:
         reconnect_attempts = 0
         relink = 0
@@ -339,6 +347,8 @@ async def main():
                         # 未满仓,加仓
                         if 0 < long_position < hold_info.get("max_long_position"):
                             # print(222)
+                            # print(price_dict)
+                            # print(price_dict['add_price_list(ideal)'])
                             target_market_price = price_dict['add_price_list(ideal)'][long_position-1]
                             if target_market_price < probable_price:
                                 if not trade_auth("buy"):
@@ -436,6 +446,10 @@ async def main():
         except Exception as e:
             LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
             if "Timeout reading from socket" in str(e):
+                LOGGING.info("Timeout , and reconnecting")
+                time.sleep(10)
+                continue
+            if "pymysql.err.OperationalError" in str(e):  # 应对mysql连接断开
                 LOGGING.info("Timeout , and reconnecting")
                 time.sleep(10)
                 continue
