@@ -31,7 +31,7 @@ logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("app_01")
 
 from MsgSender.wx_msg import send_wx_info
-from module.redis_url import redis_url
+from utils.url_center import redis_url
 from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 
@@ -105,7 +105,7 @@ class HoldInfo:
 
 
 def check_state(hold_stock, withdraw_order=False):
-    LOGGING.info(f"检查更新状态: {hold_stock}")
+    LOGGING.info(f"\n检查更新状态: {hold_stock}")
 
     # 持仓信息
     hold_info = HoldInfo(hold_stock)
