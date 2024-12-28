@@ -59,8 +59,8 @@ class TradeRecord(Base):
 # # 创建数据表
 # Base.metadata.create_all(engine)
 
-
-DATABASE_URL = 'mysql+pymysql://root:123456@172.155.0.3:3306/trading_db'
+from utils.url_center import DATABASE_URL
+# DATABASE_URL = 'mysql+pymysql://root:123456@172.155.0.3:3306/trading_db'
 engine = create_engine(DATABASE_URL, pool_recycle=3600)
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -362,7 +362,7 @@ if __name__ == "__main__":
     # last_hold_price = sqlManager.get(execution_cycle, "rest_amount")
     # print(last_hold_price)
 
-    execution_cycle = sqlManager.generate_execution_cycle(strategy_name)
+    execution_cycle = sqlManager.generate_execution_cycle()
 
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
