@@ -1,4 +1,3 @@
-import json
 import sys
 import time
 import hmac
@@ -93,11 +92,11 @@ class HoldInfo:
         # self.decoded_data = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in all_info.items()}
         for k, v in all_info.items():
             if k.decode('utf-8') in origin_str_list:
-                self.decoded_data[k.decode('utf-8')] = v
+                self.decoded_data[k.decode('utf-8')] = v.decode('utf-8')
             elif k.decode('utf-8') in origin_int_list:
-                self.decoded_data[k.decode('utf-8')] = int(v)
+                self.decoded_data[k.decode('utf-8')] = int(v.decode('utf-8'))
             else:
-                self.decoded_data[k.decode('utf-8')] = float(v)
+                self.decoded_data[k.decode('utf-8')] = float(v.decode('utf-8'))
 
     def reset_all(self):
         for key in origin_reset_list:
