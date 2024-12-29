@@ -34,7 +34,6 @@ else:
     print("Error: No arguments were passed. Please provide an target_stock and try again!")
     sys.exit(1)  # 使用非零状态码表示异常退出
 
-# sort_name = target_stock.split('-')[0]
 
 from utils.url_center import redis_url_fastest
 
@@ -48,44 +47,35 @@ from utils.url_center import redis_url_fastest
 # target_stock = "DOGE-USDT"
 # target_stock = "PEPE-USDT"
 
+# 订阅产品频道的消息
+subscribe_msg = {
+    "op": "subscribe",
+    "args": [
+        {
+            "channel": "trades",
+            # "instType": "FUTURES",  # 这里可以是SPOT, MARGIN, SWAP, FUTURES, OPTION之一
+            "instId": target_stock
+        }
+    ]
+}
 
-redis_microsoft = redis.Redis.from_url(redis_url_fastest)
+redis_fastest = redis.Redis.from_url(redis_url_fastest)
 
-
-# timestamp_seconds = time.time()
-# timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
-# redis_microsoft.hset(f"real_time_index:{target_stock}",
-#                      mapping={
-#                          'now_price': 0,
-#                          'trading volume': 0,
-#                          'update_time': timestamp_ms,
-#                      })
 
 def update_real_time_info(now_price, trading_volume):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
-    redis_microsoft.hset(f"real_time_index:{target_stock}",
+    redis_fastest.hset(f"real_time_index:{target_stock}",
                          mapping={
                              'now_price': now_price,
                              'trading_volume': trading_volume,
                              'update_time': timestamp_ms,
-                             'update_time(东八区)': current_time,
+                             'update_time(24时制)': current_time,
                          })
 
 
 async def main():
-    # 订阅产品频道的消息
-    subscribe_msg = {
-        "op": "subscribe",
-        "args": [
-            {
-                "channel": "trades",
-                # "instType": "FUTURES",  # 这里可以是SPOT, MARGIN, SWAP, FUTURES, OPTION之一
-                "instId": target_stock
-            }
-        ]
-    }
     while True:
         reconnect_attempts = 0
         try:
@@ -98,40 +88,14 @@ async def main():
 
                 # 持续监听增量数据
                 while True:
-                    try:
-                        # response = await websocket.recv()
-                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
+                    response = await asyncio.wait_for(websocket.recv(), timeout=25)
 
-                        # 将字符串转换为字典
-                        data_dict = json.loads(response)
+                    data_dict = json.loads(response)
+                    now_price = float(data_dict["data"][0]["px"])
+                    trading_volume = float(data_dict["data"][0]["sz"])
 
-                        # os.system("clear")
-                        # price = data_dict["data"][0]["px"]
-                        # print(f"成交价格:{price}")
-                        # print(f"成交数量:{num}")
-
-                        now_price = float(data_dict["data"][0]["px"])
-                        trading_volume = float(data_dict["data"][0]["sz"])
-
-                        # LOGGING.info(f"now_price: {now_price}")
-                        update_real_time_info(now_price, trading_volume)
-
-
-                    # except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-                    #     try:
-                    #         await websocket.send('ping')
-                    #         res = await websocket.recv()
-                    #         print(res)
-                    #         continue
-                    #
-                    #     except Exception as e:
-                    #         print("连接关闭，正在重连……")
-                    #         break
-
-                    except Exception as e:
-                        # 这里好像没有完全退出
-                        LOGGING.error(f"{target_stock}，连接断开，不重新连接，请检查……其他 {e}")
-                        break
+                    # LOGGING.info(f"now_price: {now_price}")
+                    update_real_time_info(now_price, trading_volume)
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
@@ -168,8 +132,11 @@ async def main():
                 LOGGING.info("Timeout , and reconnecting")
                 time.sleep(10)
                 continue
-            break
-            
+
+            # 直接终止
+            sys.exit(1)
+            # break
+
         finally:
             LOGGING.error(f"出错股票: {target_stock} !!!!")
 
