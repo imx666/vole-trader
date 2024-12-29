@@ -35,8 +35,9 @@ from module.trade_records import TradeRecordManager
 
 
 class HoldInfo:
-    def __init__(self, target_stock):
+    def __init__(self, target_stock, LOGGING=None):
         self.target_stock = target_stock
+        self.LOGGING = LOGGING
         self.redis_okx = redis.Redis.from_url(redis_url)
         self.decoded_data = {}
         self.newest_all()
@@ -81,7 +82,7 @@ class HoldInfo:
     def pull_dict(self, target_dict):
         self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
         self.newest_all()
-        LOGGING.info("信息同步redis成功")
+        self.LOGGING.info("信息同步redis成功")
 
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
@@ -102,11 +103,11 @@ class HoldInfo:
             self.remove(key)
 
 
-def check_state(hold_stock, withdraw_order=False):
+def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     LOGGING.info(f"\n检查更新状态: {hold_stock}")
 
     # 持仓信息
-    hold_info = HoldInfo(hold_stock)
+    hold_info = HoldInfo(hold_stock, LOGGING)
 
     # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
@@ -118,8 +119,10 @@ def check_state(hold_stock, withdraw_order=False):
 
     # 查询未成交订单并取消
     sqlManager = TradeRecordManager(hold_stock, strategy_name=strategy_name)
-    record_list_1 = sqlManager.filter_record(state="live")
-    record_list_2 = sqlManager.filter_record(state="partially_filled")
+    # sqlManager.target_stock = hold_stock
+    # sqlManager.new_stock(hold_stock)
+    record_list_1 = sqlManager.filter_record(state="live", new_stock=hold_stock)
+    record_list_2 = sqlManager.filter_record(state="partially_filled", new_stock=hold_stock)
     record_list = record_list_1 + record_list_2
     if not record_list:
         LOGGING.info("无live和part订单,跳过同步")
@@ -185,22 +188,21 @@ def check_state(hold_stock, withdraw_order=False):
         hold_info.remove('reduce_price_list(ideal)')
         hold_info.remove('close_price(ideal)')
 
-
         # 重置余额
         balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
         init_balance = 100 + balance_delta
 
         new_info = {
-           'execution_cycle': "ready",  # 重置编码
-           'pending_order': 0,
-           'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
-           'long_position': 0,
-           'sell_times': 0,
-           'build_price': 0,
-           'init_balance': init_balance,
-           'risk_rate': 0.0035,
-           'max_long_position': 4,
-           'max_sell_times': 3,
+            'execution_cycle': "ready",  # 重置编码
+            'pending_order': 0,
+            'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
+            'long_position': 0,
+            'sell_times': 0,
+            'build_price': 0,
+            'init_balance': init_balance,
+            'risk_rate': 0.0035,
+            'max_long_position': 4,
+            'max_sell_times': 3,
         }
     hold_info.pull_dict(new_info)
 
@@ -282,7 +284,7 @@ origin_reset_list = [
 ]
 
 strategy_name = "TURTLE"
-
+# sqlManager = TradeRecordManager("sb", strategy_name=strategy_name)
 
 
 if __name__ == '__main__':
@@ -293,4 +295,3 @@ if __name__ == '__main__':
     # long_position = sqlManager.get(execution_cycle, "long_position")
     # print(long_position)
     check_state(hold_info)
-

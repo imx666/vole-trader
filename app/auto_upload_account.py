@@ -1,17 +1,10 @@
-import json
-import socket
 import time
 import schedule
 from datetime import datetime, timezone, timedelta
 
-import asyncio
-import websockets
-
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
 from monitor.monitor_account import check_state
-from monitor.monitor_account import prepare_login
-
 import logging.config
 from utils.logging_config import Logging_dict
 
@@ -43,9 +36,10 @@ target_stock_li = [
 def update_chain():
     for hold_stock in target_stock_li:
         try:
-            check_state(hold_stock)
+            check_state(hold_stock, withdraw_order=False, LOGGING=LOGGING)
         except Exception as e:
             LOGGING.error(e)
+
 
 if __name__ == "__main__":
     update_chain()
