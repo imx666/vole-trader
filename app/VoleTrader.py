@@ -272,7 +272,6 @@ async def main():
     global execution_cycle, price_dict
     while True:
         reconnect_attempts = 0
-        relink = 0
 
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/public') as websocket:
@@ -291,9 +290,6 @@ async def main():
 
                 # 持续监听增量数据
                 while True:
-                    if relink is True:
-                        break
-
                     try:
 
                         # 更新策略参数
@@ -406,34 +402,36 @@ async def main():
                                 time.sleep(10)
                                 hold_info.pull_dict(new_info)
 
-                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-                        try:
-                            # LOGGING.info(f"发送ping")
-                            await websocket.send('ping')
-                            await websocket.recv()
-                            # res = await websocket.recv()
-                            # LOGGING.info(f"收到: {res}")
-                            continue
-
-                        except websockets.exceptions.ConnectionClosedError as e:
-                            LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
-                            raise Exception(f"sbsb")
-                            # break
-                        except websockets.exceptions.ConnectionClosedOK as e:
-                            LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
-                            raise Exception(f"sbsb")
-                            # break
-                        except Exception as e:
-                            # 这里好像没有完全退出
-                            LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
-                            break
+                    # except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+                    #     try:
+                    #         # LOGGING.info(f"发送ping")
+                    #         await websocket.send('ping')
+                    #         await websocket.recv()
+                    #         # res = await websocket.recv()
+                    #         # LOGGING.info(f"收到: {res}")
+                    #         continue
+                    #
+                    #     except websockets.exceptions.ConnectionClosedError as e:
+                    #         LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
+                    #         raise Exception(f"sbsb")
+                    #         # break
+                    #     except websockets.exceptions.ConnectionClosedOK as e:
+                    #         LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
+                    #         raise Exception(f"sbsb")
+                    #         # break
+                    #     except Exception as e:
+                    #         # 这里好像没有完全退出
+                    #         LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
+                    #         break
 
                     except websockets.exceptions.ConnectionClosedError as e:
                         LOGGING.error(f"连接意外关闭1111, 错误代码: {e.code}, 原因: {e}")
-                        break
+                        raise Exception(f"sbsb")
+                        # break
                     except websockets.exceptions.ConnectionClosedOK as e:
                         LOGGING.info(f"连接正常关闭2222, 错误代码: {e.code}, 原因: {e}")
-                        break
+                        raise Exception(f"sbsb")
+                        # break
                     except Exception as e:
                         # 这里好像没有完全退出
                         LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
