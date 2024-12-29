@@ -40,7 +40,7 @@ LOGGING = logging.getLogger("app_01")
 
 
 from MsgSender.wx_msg import send_wx_info
-from monitor.monitor_account import prepare_login
+from monitor.account_monitor import prepare_login
 from VoleTrader import load_reference_index
 
 ATR = 999999

@@ -11,7 +11,7 @@ LOGGING = logging.getLogger("app_01")
 import redis
 
 from utils.url_center import redis_url
-from monitor.monitor_account import HoldInfo
+from monitor.account_monitor import HoldInfo
 
 redis_okx = redis.Redis.from_url(redis_url)
 

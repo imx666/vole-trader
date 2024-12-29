@@ -13,9 +13,9 @@ from MsgSender.feishu_msg import send_feishu_info
 from utils.url_center import redis_url
 from module.trade_records import TradeRecordManager
 from module.trade_assistant import TradeAssistant
-from monitor.monitor_account import check_state
-from monitor.monitor_account import HoldInfo
-from monitor.monitor_account import prepare_login
+from monitor.account_monitor import check_state
+from monitor.account_monitor import HoldInfo
+from monitor.account_monitor import prepare_login
 
 
 import sys

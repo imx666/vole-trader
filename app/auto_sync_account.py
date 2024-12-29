@@ -10,8 +10,8 @@ import websockets
 
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
-from monitor.monitor_account import check_state
-from monitor.monitor_account import prepare_login
+from monitor.account_monitor import check_state
+from monitor.account_monitor import prepare_login
 
 import logging.config
 from utils.logging_config import Logging_dict
