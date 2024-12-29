@@ -102,63 +102,76 @@ async def main():
                         # response = await websocket.recv()
                         response = await asyncio.wait_for(websocket.recv(), timeout=25)
 
-                        # print("收到增量数据: ", response)
                         # 将字符串转换为字典
                         data_dict = json.loads(response)
+
                         # os.system("clear")
                         # price = data_dict["data"][0]["px"]
-
                         # print(f"成交价格:{price}")
                         # print(f"成交数量:{num}")
+
                         now_price = float(data_dict["data"][0]["px"])
                         trading_volume = float(data_dict["data"][0]["sz"])
 
-                        LOGGING.info(f"now_price: {now_price}")
+                        # LOGGING.info(f"now_price: {now_price}")
                         update_real_time_info(now_price, trading_volume)
 
 
-                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
-                        try:
-                            await websocket.send('ping')
-                            res = await websocket.recv()
-                            print(res)
-                            continue
+                    # except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+                    #     try:
+                    #         await websocket.send('ping')
+                    #         res = await websocket.recv()
+                    #         print(res)
+                    #         continue
+                    #
+                    #     except Exception as e:
+                    #         print("连接关闭，正在重连……")
+                    #         break
 
-                        except Exception as e:
-                            print("连接关闭，正在重连……")
-                            break
-
-
-        except websockets.exceptions.InvalidURI as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print('uri异常！')
-            await asyncio.sleep(5)  # 等待5秒后重试
+                    except Exception as e:
+                        # 这里好像没有完全退出
+                        LOGGING.error(f"{target_stock}，连接断开，不重新连接，请检查……其他 {e}")
+                        break
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print(f"Connection closed: {e}")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            print(f"Reconnecting in {wait_time} seconds...")
+            LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+
+        except asyncio.TimeoutError:
+            print("Timeout reading from socket.")
+            reconnect_attempts += 1
+            wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
+            LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
             await asyncio.sleep(wait_time)
 
         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
         except socket.error as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print(f"Connection closed: {e}")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            print(f"Reconnecting in {wait_time} seconds...")
+            LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
             await asyncio.sleep(wait_time)
 
         except Exception as e:
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"{current_time} 连接断开，正在重连……")
-            print('其他', e)
+            LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
+            if "Timeout reading from socket" in str(e):
+                LOGGING.info("Timeout , and reconnecting")
+                time.sleep(10)
+                continue
+            if "sbsb" in str(e):
+                LOGGING.info("Timeout , and reconnecting")
+                time.sleep(10)
+                continue
+            if "pymysql.err.OperationalError" in str(e):  # 应对mysql连接断开
+                LOGGING.info("Timeout , and reconnecting")
+                time.sleep(10)
+                continue
+            break
+            
+        finally:
+            LOGGING.error(f"出错股票: {target_stock} !!!!")
 
 
 if __name__ == '__main__':
