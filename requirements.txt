@@ -6,3 +6,7 @@ celery
 redis
 daphne
 python-okx
+schedule
+websockets
+pytz
+sqlalchemy
