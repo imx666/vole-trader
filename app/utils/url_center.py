@@ -8,6 +8,7 @@ dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文�
 load_dotenv(dotenv_path)  # 载入环境变量
 
 # 从环境变量中获取 Redis 配置
+REDIS_HOST_fastest = os.getenv("REDIS_HOST_fastest")
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = os.getenv("REDIS_PORT")
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
@@ -21,6 +22,7 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
 
 # 构建 Redis 连接字符串
 redis_url = f'redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_okx}'
+redis_url_fastest = f'redis://:{REDIS_PASSWORD}@{REDIS_HOST_fastest}:{REDIS_PORT}/{REDIS_DB_okx}'
 
 # 构建 mysql 连接字符串
 DATABASE_URL = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/trading_db'
