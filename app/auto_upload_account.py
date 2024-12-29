@@ -2,7 +2,6 @@ import json
 import socket
 import time
 import schedule
-import redis
 from datetime import datetime, timezone, timedelta
 
 import asyncio
