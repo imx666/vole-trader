@@ -5,23 +5,17 @@ import socket
 import websockets
 import json
 
-# 指定.env.dev文件的路径
-from pathlib import Path
-from dotenv import load_dotenv
 
-project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-import os
+import logging.config
+from utils.logging_config import Logging_dict
 
-dotenv_path = os.path.join(project_path, '../.env.dev')
+logging.config.dictConfig(Logging_dict)
+LOGGING = logging.getLogger(f"VoleTrader")
 
-# 载入环境变量
-load_dotenv(dotenv_path)
-api_key = os.getenv('API_KEY')
-secret_key = os.getenv('SECRET_KEY')
-passphrase = os.getenv('PASSPHRASE')
 
-target_stock = "FLOKI-USDT"
-# target_stock = "BTC-USDT"
+
+# target_stock = "FLOKI-USDT"
+target_stock = "BTC-USDT"
 
 
 async def main():
@@ -44,7 +38,8 @@ async def main():
                 # 发送订阅请求
                 await websocket.send(json.dumps(subscribe_msg))
                 subscribe_response = await websocket.recv()
-                print("订阅响应: ", subscribe_response)
+                LOGGING.info(f"订阅响应: {subscribe_response}")
+                LOGGING.info(f"持续跟踪价格中...")
 
                 # 持续监听增量数据
                 while True:
@@ -56,12 +51,15 @@ async def main():
                         # 将字符串转换为字典
                         data_dict = json.loads(response)
                         # os.system("clear")
-                        price = data_dict["data"][0]["px"]
-                        num = data_dict["data"][0]["sz"]
+                        # price = data_dict["data"][0]["px"]
+                        # num = data_dict["data"][0]["sz"]
 
-                        print(f"标的:{target_stock}")
-                        print(f"成交价格:{price}")
-                        print(f"成交数量:{num}")
+                        # print(f"标的:{target_stock}")
+                        # print(f"成交价格:{price}")
+                        # print(f"成交数量:{num}")
+                        now_price = float(data_dict["data"][0]["px"])
+
+                        LOGGING.info(f"now_price: {now_price}")
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
