@@ -64,7 +64,7 @@ last_read_time = redis_okx.hget(f"common_index:{target_stock}", 'last_read_time'
 DayStamp = last_read_time.decode() if last_read_time is not None else None
 
 # 持仓信息
-hold_info = HoldInfo(target_stock)
+hold_info = HoldInfo(target_stock, LOGGING=LOGGING)
 execution_cycle = hold_info.get("execution_cycle")
 
 # 交易助手
@@ -259,9 +259,10 @@ def timed_task():
 
         # 取消未成交的挂单
         # check_state(target_stock, sqlManager, hold_info, geniusTrader, withdraw_order=True)
-        check_state(target_stock, withdraw_order=True)
+        # check_state(target_stock, withdraw_order=True)
+        check_state(target_stock, withdraw_order=False, LOGGING=LOGGING)
 
-        # 开放交易权限
+    # 开放交易权限
         hold_info.pull("tradeFlag", "all-auth")  # 同步新编号
 
         LOGGING.info(f"持续跟踪价格中...")
@@ -416,16 +417,25 @@ async def main():
 
                         except websockets.exceptions.ConnectionClosedError as e:
                             LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
-                            relink = 1
                             break
                         except websockets.exceptions.ConnectionClosedOK as e:
-                            relink = 1
                             LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
                             break
                         except Exception as e:
                             # 这里好像没有完全退出
                             LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
                             break
+
+                    except websockets.exceptions.ConnectionClosedError as e:
+                        LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
+                        break
+                    except websockets.exceptions.ConnectionClosedOK as e:
+                        LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
+                        break
+                    except Exception as e:
+                        # 这里好像没有完全退出
+                        LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
+                        break
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
