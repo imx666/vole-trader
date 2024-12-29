@@ -74,6 +74,9 @@ class TradeRecordManager:
         self.target_stock = target_stock
         self.strategy = strategy_name
 
+    # def new_stock(self, new_stock):
+    #     self.target_stock = new_stock
+
     def __del__(self):
         self.session.close()
 
@@ -104,11 +107,14 @@ class TradeRecordManager:
             return name
         return None
 
-    def filter_record(self, state):
+    def filter_record(self, state, new_stock=None):
+        # print(12345, new_stock)
+        if new_stock is None:
+            new_stock = self.target_stock
         record_list = []
         filtered_records = (
             self.session.query(TradeRecord)
-            .filter(TradeRecord.target_stock == self.target_stock)
+            .filter(TradeRecord.target_stock == new_stock)
             .filter(TradeRecord.state == state)
             .all()
         )
