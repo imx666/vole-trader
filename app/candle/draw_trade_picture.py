@@ -140,9 +140,9 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     )
 
     # 在指定的位置绘制卖出点
-    plt.scatter(buy_df['timestamp'], buy_df['value'], color='blue', label='Buy Points', s=10)
-    plt.scatter(sell_df['timestamp'], sell_df['value'], color='yellow', label='Sell Points', s=15)
-    plt.scatter(sell_empty_df['timestamp'], sell_empty_df['value'], color='orange', label='Sell empty Points', s=20)
+    plt.scatter(buy_df['timestamp'], buy_df['value'], color='blue', label='Buy Points', s=5)
+    plt.scatter(sell_df['timestamp'], sell_df['value'], color='yellow', label='Sell Points', s=7.5)
+    plt.scatter(sell_empty_df['timestamp'], sell_empty_df['value'], color='orange', label='Sell empty Points', s=10)
 
     # 设置日期格式
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
