@@ -417,20 +417,22 @@ async def main():
 
                         except websockets.exceptions.ConnectionClosedError as e:
                             LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
-                            break
+                            raise Exception(f"sbsb")
+                            # break
                         except websockets.exceptions.ConnectionClosedOK as e:
                             LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
-                            break
+                            raise Exception(f"sbsb")
+                            # break
                         except Exception as e:
                             # 这里好像没有完全退出
                             LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
                             break
 
                     except websockets.exceptions.ConnectionClosedError as e:
-                        LOGGING.error(f"连接意外关闭1, 错误代码: {e.code}, 原因: {e}")
+                        LOGGING.error(f"连接意外关闭1111, 错误代码: {e.code}, 原因: {e}")
                         break
                     except websockets.exceptions.ConnectionClosedOK as e:
-                        LOGGING.info(f"连接正常关闭2, 错误代码: {e.code}, 原因: {e}")
+                        LOGGING.info(f"连接正常关闭2222, 错误代码: {e.code}, 原因: {e}")
                         break
                     except Exception as e:
                         # 这里好像没有完全退出
@@ -461,6 +463,10 @@ async def main():
         except Exception as e:
             LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
             if "Timeout reading from socket" in str(e):
+                LOGGING.info("Timeout , and reconnecting")
+                time.sleep(10)
+                continue
+            if "sbsb" in str(e):
                 LOGGING.info("Timeout , and reconnecting")
                 time.sleep(10)
                 continue
