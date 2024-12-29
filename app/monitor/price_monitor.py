@@ -1,7 +1,9 @@
 import asyncio
+import time
 from datetime import datetime
 import socket
 
+import redis
 import websockets
 import json
 
@@ -24,14 +26,55 @@ from utils.logging_config import Logging_dict
 logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger(f"VoleTrader")
 
+# 第一个参数是脚本名称，后续的是传入的参数
+if len(sys.argv) > 1:
+    target_stock = sys.argv[1]  # 这里会得到 '123'
+    print(f"The argument target_stock is: {target_stock}")
+else:
+    print("Error: No arguments were passed. Please provide an target_stock and try again!")
+    sys.exit(1)  # 使用非零状态码表示异常退出
 
+# sort_name = target_stock.split('-')[0]
 
+from utils.url_center import redis_url_fastest
+
+# LOGGING = logging.getLogger(f"VoleTrader")
+
+# target_stock = "LUNC-USDT"
+# target_stock = "BTC-USDT"
+# target_stock = "ETH-USDT"
 # target_stock = "FLOKI-USDT"
-target_stock = "BTC-USDT"
+# target_stock = "OMI-USDT"
+# target_stock = "DOGE-USDT"
+# target_stock = "PEPE-USDT"
+
+
+redis_microsoft = redis.Redis.from_url(redis_url_fastest)
+
+
+# timestamp_seconds = time.time()
+# timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+# redis_microsoft.hset(f"real_time_index:{target_stock}",
+#                      mapping={
+#                          'now_price': 0,
+#                          'trading volume': 0,
+#                          'update_time': timestamp_ms,
+#                      })
+
+def update_real_time_info(now_price, trading_volume):
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp_seconds = time.time()
+    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+    redis_microsoft.hset(f"real_time_index:{target_stock}",
+                         mapping={
+                             'now_price': now_price,
+                             'trading_volume': trading_volume,
+                             'update_time': timestamp_ms,
+                             'update_time(东八区)': current_time,
+                         })
 
 
 async def main():
-
     # 订阅产品频道的消息
     subscribe_msg = {
         "op": "subscribe",
@@ -64,14 +107,15 @@ async def main():
                         data_dict = json.loads(response)
                         # os.system("clear")
                         # price = data_dict["data"][0]["px"]
-                        # num = data_dict["data"][0]["sz"]
 
-                        # print(f"标的:{target_stock}")
                         # print(f"成交价格:{price}")
                         # print(f"成交数量:{num}")
                         now_price = float(data_dict["data"][0]["px"])
+                        trading_volume = float(data_dict["data"][0]["sz"])
 
                         LOGGING.info(f"now_price: {now_price}")
+                        update_real_time_info(now_price, trading_volume)
+
 
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
@@ -117,9 +161,6 @@ async def main():
             print('其他', e)
 
 
-
 if __name__ == '__main__':
-
-
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
