@@ -50,7 +50,8 @@ subscribe_msg = {
     "op": "subscribe",
     "args": [
         {
-            "channel": "price-limit",
+            # "channel": "price-limit",
+            "channel": "trades",
             "instId": target_stock
         }
     ]
@@ -307,12 +308,16 @@ async def main():
                             continue
 
                         data_dict = json.loads(response)
-                        buyLmt = float(data_dict["data"][0]["buyLmt"])
-                        sellLmt = float(data_dict["data"][0]["sellLmt"])
-                        # LOGGING.info(f"buyLmt: {buyLmt}, sellLmt: {sellLmt}")
+                        # buyLmt = float(data_dict["data"][0]["buyLmt"])
+                        # sellLmt = float(data_dict["data"][0]["sellLmt"])
+                        now_price = float(data_dict["data"][0]["px"])
+                        agent.now_price = now_price
 
-                        probable_price = (buyLmt + sellLmt) / 2
-                        agent.buyLmt, agent.sellLmt = buyLmt, sellLmt
+                        # LOGGING.info(f"buyLmt: {buyLmt}, sellLmt: {sellLmt}")
+                        LOGGING.info(f"now_price: {now_price}")
+
+                        # now_price = (buyLmt + sellLmt) / 2
+                        # agent.buyLmt, agent.sellLmt = buyLmt, sellLmt
                         long_position = hold_info.newest("long_position")
                         sell_times = hold_info.newest("sell_times")
 
@@ -324,7 +329,7 @@ async def main():
                             # print(111)
                             # 计算目标价格
                             target_market_price = price_dict['build_price(ideal)']
-                            if target_market_price < probable_price:
+                            if target_market_price < now_price:
                                 if not trade_auth("buy"):
                                     continue
                                 # 生成新编号
@@ -350,7 +355,7 @@ async def main():
                             # print(price_dict)
                             # print(price_dict['add_price_list(ideal)'])
                             target_market_price = price_dict['add_price_list(ideal)'][long_position-1]
-                            if target_market_price < probable_price:
+                            if target_market_price < now_price:
                                 if not trade_auth("buy"):
                                     continue
                                 # 计算目标数量
@@ -369,7 +374,7 @@ async def main():
                         if long_position == hold_info.get("max_long_position") and sell_times <= hold_info.get(
                                 "max_sell_times"):
                             target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
-                            if probable_price < target_market_price:
+                            if now_price < target_market_price:
                                 if not trade_auth("sell"):
                                     continue
                                 msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
@@ -386,7 +391,7 @@ async def main():
                         if long_position > 0:
                             # print(666)
                             close_price = price_dict["close_price(ideal)"]
-                            if probable_price < close_price:
+                            if now_price < close_price:
                                 if not trade_auth("sell"):
                                     continue
                                 msg = price_dict["close_type"]

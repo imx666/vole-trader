@@ -34,6 +34,7 @@ class TradeAssistant:
         self.trade_type = trade_type
         self.buyLmt = None
         self.sellLmt = None
+        self.now_price = None
         self.msg = None
         
         if LOGGING is None:
@@ -45,10 +46,11 @@ class TradeAssistant:
     def show_moment(self, target_market_price, amount):
         if self.msg is not None:
             self.LOGGING.info(f"remark: {self.msg}")
-        probable_price = (self.buyLmt + self.sellLmt) / 2
-        self.LOGGING.info(f"现价(可能): {round(probable_price, 6)}")
+        # probable_price = (self.buyLmt + self.sellLmt) / 2
+        # self.LOGGING.info(f"现价(可能): {round(probable_price, 6)}")
+        self.LOGGING.info(f"现价: {self.now_price}")
         self.LOGGING.info(f"目标价: {target_market_price}, 数量: {amount}")
-        self.LOGGING.info(f"买限: {self.buyLmt}, 卖限: {self.sellLmt}")
+        # self.LOGGING.info(f"买限: {self.buyLmt}, 卖限: {self.sellLmt}")
 
     def sell(self, execution_cycle, target_market_price, ratio, remark=None):
         total_max_amount = self.sqlManager.get(execution_cycle, "total_max_amount")
