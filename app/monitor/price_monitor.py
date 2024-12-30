@@ -103,20 +103,23 @@ async def main():
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
             LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
             await asyncio.sleep(wait_time)
+            continue
 
-        except asyncio.TimeoutError:
-            print("Timeout reading from socket.")
+        except asyncio.TimeoutError as e:
+            LOGGING.error("3333 Timeout reading from socket.")
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
             LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
             await asyncio.sleep(wait_time)
+            continue
 
         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
         except socket.error as e:
             reconnect_attempts += 1
             wait_time = min(2 ** reconnect_attempts, 60)  # 最大等待时间为60秒
-            LOGGING.info(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
+            LOGGING.error(f"Connection closed: {e}\n Reconnecting in {wait_time} seconds...")
             await asyncio.sleep(wait_time)
+            continue
 
         except Exception as e:
             LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
