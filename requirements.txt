@@ -11,3 +11,4 @@ websockets
 pytz
 sqlalchemy
 pandas
+pymysql
