@@ -3,3 +3,14 @@
 .DS_Store
 /venv
 /logs
+/app/utils/__pycache__
+/.idea
+/app/module/__pycache__
+/data
+/app/MsgSender/__pycache__
+/app/__pycache__
+/app/candle/__pycache__
+/app/monitor/__pycache__
+tools/leetcode.py
+tools/draft.py
+
