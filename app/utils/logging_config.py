@@ -40,11 +40,11 @@ Logging_dict = {
         "auto_upload_index": logging_config("auto_upload_index"),
         "auto_upload_account": logging_config("auto_upload_account"),
         "price_monitor": logging_config("price_monitor"),
-        "VoleTrader-DOGE": logging_config("VoleTrader-DOGE"),
-        "VoleTrader-ETH": logging_config("VoleTrader-ETH"),
-        "VoleTrader-BTC": logging_config("VoleTrader-BTC"),
-        "VoleTrader-FLOKI": logging_config("VoleTrader-FLOKI"),
-        "VoleTrader-XRP": logging_config("VoleTrader-XRP"),
+        "quantVole-DOGE": logging_config("quantVole-DOGE"),
+        "quantVole-ETH": logging_config("quantVole-ETH"),
+        "quantVole-BTC": logging_config("quantVole-BTC"),
+        "quantVole-FLOKI": logging_config("quantVole-FLOKI"),
+        "quantVole-XRP": logging_config("quantVole-XRP"),
     },
     "loggers": {
         "app_01": {
@@ -72,28 +72,28 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "VoleTrader-DOGE": {
-            "handlers": ["VoleTrader-DOGE"],
+        "quantVole-DOGE": {
+            "handlers": ["quantVole-DOGE"],
             "level": "DEBUG",
             "propagate": False,
         },
-        "VoleTrader-ETH": {
-            "handlers": ["VoleTrader-ETH"],
+        "quantVole-ETH": {
+            "handlers": ["quantVole-ETH"],
             "level": "DEBUG",
             "propagate": False,
         },
-        "VoleTrader-BTC": {
-            "handlers": ["VoleTrader-BTC"],
+        "quantVole-BTC": {
+            "handlers": ["quantVole-BTC"],
             "level": "DEBUG",
             "propagate": False,
         },
-        "VoleTrader-FLOKI": {
-            "handlers": ["VoleTrader-FLOKI"],
+        "quantVole-FLOKI": {
+            "handlers": ["quantVole-FLOKI"],
             "level": "DEBUG",
             "propagate": False,
         },
-        "VoleTrader-XRP": {
-            "handlers": ["VoleTrader-XRP"],
+        "quantVole-XRP": {
+            "handlers": ["quantVole-XRP"],
             "level": "DEBUG",
             "propagate": False,
         },
