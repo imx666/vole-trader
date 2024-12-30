@@ -24,7 +24,7 @@ import logging.config
 from utils.logging_config import Logging_dict
 
 logging.config.dictConfig(Logging_dict)
-LOGGING = logging.getLogger(f"VoleTrader")
+LOGGING = logging.getLogger(f"price_monitor")
 
 # 第一个参数是脚本名称，后续的是传入的参数
 if len(sys.argv) > 1:
@@ -35,9 +35,6 @@ else:
     sys.exit(1)  # 使用非零状态码表示异常退出
 
 
-from utils.url_center import redis_url_fastest
-
-# LOGGING = logging.getLogger(f"VoleTrader")
 
 # target_stock = "LUNC-USDT"
 # target_stock = "BTC-USDT"
@@ -59,6 +56,7 @@ subscribe_msg = {
     ]
 }
 
+from utils.url_center import redis_url_fastest
 redis_fastest = redis.Redis.from_url(redis_url_fastest)
 
 
@@ -67,12 +65,12 @@ def update_real_time_info(now_price, trading_volume):
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
     redis_fastest.hset(f"real_time_index:{target_stock}",
-                         mapping={
-                             'now_price': now_price,
-                             'trading_volume': trading_volume,
-                             'update_time': timestamp_ms,
-                             'update_time(24时制)': current_time,
-                         })
+                       mapping={
+                           'now_price': now_price,
+                           'trading_volume': trading_volume,
+                           'update_time': timestamp_ms,
+                           'update_time(24时制)': current_time,
+                       })
 
 
 async def main():

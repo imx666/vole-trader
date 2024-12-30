@@ -39,7 +39,7 @@ Logging_dict = {
         "auto_sync_account": logging_config("auto_sync_account"),
         "auto_upload_index": logging_config("auto_upload_index"),
         "auto_upload_account": logging_config("auto_upload_account"),
-        "VoleTrader": logging_config("VoleTrader"),
+        "price_monitor": logging_config("price_monitor"),
         "VoleTrader-DOGE": logging_config("VoleTrader-DOGE"),
         "VoleTrader-ETH": logging_config("VoleTrader-ETH"),
         "VoleTrader-BTC": logging_config("VoleTrader-BTC"),
@@ -67,8 +67,8 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "VoleTrader": {
-            "handlers": ["VoleTrader"],
+        "price_monitor": {
+            "handlers": ["price_monitor"],
             "level": "DEBUG",
             "propagate": False,
         },
