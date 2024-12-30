@@ -33,8 +33,8 @@ import logging.config
 from utils.logging_config import Logging_dict
 
 logging.config.dictConfig(Logging_dict)
-LOGGING = logging.getLogger(f"VoleTrader-{sort_name}")
-# LOGGING = logging.getLogger(f"VoleTrader")
+LOGGING = logging.getLogger(f"quantVole-{sort_name}")
+# LOGGING = logging.getLogger(f"quantVole")
 
 
 # target_stock = "LUNC-USDT"
@@ -300,6 +300,8 @@ def get_real_time_info():
     print(update_time, timestamp_ms)
     print(delta_time)
     print()
+    if delta_time > 6000*5:
+        raise Exception(f"价格数据已经严重滞后: {delta_time} ms")
     # print(decoded_data)
     return decoded_data
 
@@ -310,10 +312,9 @@ def circle():
         reconnect_attempts = 0
 
         try:
-
+            # 计算目标价
             load_index_and_compute_price(target_stock)
 
-            # 持续监听增量数据
             while True:
                 # 更新策略参数
                 timed_task()
@@ -357,7 +358,6 @@ def circle():
                             "tradeFlag": "buy-only"
                         }
                         hold_info.pull_dict(new_info)
-                        time.sleep(10)
                         continue
 
                 # 未满仓,加仓
@@ -375,7 +375,6 @@ def circle():
                         agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
 
                         hold_info.pull("pending_order", 1)
-                        time.sleep(10)
                         continue
 
                 # 卖出 ============= SELL =========SELL===========SELL===================== SELL
@@ -395,29 +394,25 @@ def circle():
                         agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
                         hold_info.pull("pending_order", 1)
                         # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
-                        time.sleep(10)
                         continue
 
                 # 止损
                 if long_position > 0:
-                        # print(666)
-                        close_price = price_dict["close_price(ideal)"]
-                        if now_price < close_price:
-                            if not trade_auth("sell"):
-                                continue
-                            msg = price_dict["close_type"]
-                            ratio = 1
-                            agent.sell(execution_cycle, close_price, ratio, remark=msg)
+                    # print(666)
+                    close_price = price_dict["close_price(ideal)"]
+                    if now_price < close_price:
+                        if not trade_auth("sell"):
+                            continue
+                        msg = price_dict["close_type"]
+                        ratio = 1
+                        agent.sell(execution_cycle, close_price, ratio, remark=msg)
 
-                            new_info = {
-                                "pending_order": 1,
-                                "tradeFlag": "no-auth"
-                            }
-                            time.sleep(10)
-                            hold_info.pull_dict(new_info)
-
-
-
+                        new_info = {
+                            "pending_order": 1,
+                            "tradeFlag": "no-auth"
+                        }
+                        time.sleep(10)
+                        hold_info.pull_dict(new_info)
 
         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
         except socket.error as e:
@@ -428,10 +423,6 @@ def circle():
 
         except Exception as e:
             LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
-            if "Timeout reading from socket" in str(e):
-                LOGGING.info("Timeout , and reconnecting")
-                time.sleep(10)
-                continue
             if "sbsb" in str(e):
                 LOGGING.info("Timeout , and reconnecting")
                 time.sleep(10)
