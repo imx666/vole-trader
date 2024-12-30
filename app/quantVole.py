@@ -272,11 +272,11 @@ from utils.url_center import redis_url_fastest
 redis_fastest = redis.Redis.from_url(redis_url_fastest)
 origin_str_list = [
     "execution_cycle",
-    "update_time(东八区)",
+    "update_time(24时制)",
 ]
 
 origin_int_list = [
-    "max_long_position",
+    "update_time",
     "long_position",
     "max_sell_times",
     "sell_times",
@@ -284,7 +284,6 @@ origin_int_list = [
 
 
 def get_real_time_info():
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
     all_info = redis_fastest.hgetall(f"real_time_index:{target_stock}")
@@ -296,7 +295,12 @@ def get_real_time_info():
             decoded_data[k.decode('utf-8')] = int(v.decode('utf-8'))
         else:
             decoded_data[k.decode('utf-8')] = float(v.decode('utf-8'))
-
+    update_time = decoded_data["update_time"]
+    delta_time = timestamp_ms - update_time
+    print(update_time, timestamp_ms)
+    print(delta_time)
+    print()
+    # print(decoded_data)
     return decoded_data
 
 
@@ -311,93 +315,91 @@ def circle():
 
             # 持续监听增量数据
             while True:
-                try:
+                # 更新策略参数
+                timed_task()
 
-                    # 更新策略参数
-                    timed_task()
+                # 挂单数大于零直接跳过
+                pending_order = hold_info.newest("pending_order")
+                if pending_order > 0:
+                    # print(12345678)
+                    continue
 
-                    # 获取最新报价
-                    data_dict = get_real_time_info()
+                # 获取最新报价
+                data_dict = get_real_time_info()
 
-                    # 挂单数大于零直接跳过
-                    pending_order = hold_info.newest("pending_order")
-                    if pending_order > 0:
-                        # print(12345678)
+                now_price = data_dict["now_price"]
+                agent.now_price = now_price
+                long_position = hold_info.newest("long_position")
+                sell_times = hold_info.newest("sell_times")
+
+                # 更新策略参数
+                notice_change(long_position, sell_times)
+
+                # 空仓时
+                if long_position == 0:
+                    # print(111)
+                    # 计算目标价格
+                    target_market_price = price_dict['build_price(ideal)']
+                    if target_market_price < now_price:
+                        if not trade_auth("buy"):
+                            continue
+                        # 生成新编号
+                        execution_cycle = sqlManager.generate_execution_cycle()
+                        # 计算目标数量
+                        amount = compute_amount("build", target_market_price)
+                        # 买入
+                        agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
+
+                        new_info = {
+                            "pending_order": 1,
+                            # "build_price": target_market_price,
+                            "execution_cycle": execution_cycle,  # 同步新编号
+                            "tradeFlag": "buy-only"
+                        }
+                        hold_info.pull_dict(new_info)
+                        time.sleep(10)
                         continue
 
-                    now_price = data_dict["now_price"]
-                    agent.now_price = now_price
-                    long_position = hold_info.newest("long_position")
-                    sell_times = hold_info.newest("sell_times")
-
-                    # 更新策略参数
-                    notice_change(long_position, sell_times)
-
-                    # 空仓时
-                    if long_position == 0:
-                        # print(111)
-                        # 计算目标价格
-                        target_market_price = price_dict['build_price(ideal)']
-                        if target_market_price < now_price:
-                            if not trade_auth("buy"):
-                                continue
-                            # 生成新编号
-                            execution_cycle = sqlManager.generate_execution_cycle()
-                            # 计算目标数量
-                            amount = compute_amount("build", target_market_price)
-                            # 买入
-                            agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
-
-                            new_info = {
-                                "pending_order": 1,
-                                # "build_price": target_market_price,
-                                "execution_cycle": execution_cycle,  # 同步新编号
-                                "tradeFlag": "buy-only"
-                            }
-                            hold_info.pull_dict(new_info)
-                            time.sleep(10)
+                # 未满仓,加仓
+                if 0 < long_position < hold_info.get("max_long_position"):
+                    # print(222)
+                    # print(price_dict)
+                    # print(price_dict['add_price_list(ideal)'])
+                    target_market_price = price_dict['add_price_list(ideal)'][long_position - 1]
+                    if target_market_price < now_price:
+                        if not trade_auth("buy"):
                             continue
+                        # 计算目标数量
+                        amount = compute_amount("add", target_market_price)
+                        # 买入
+                        agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
 
-                    # 未满仓,加仓
-                    if 0 < long_position < hold_info.get("max_long_position"):
-                        # print(222)
-                        # print(price_dict)
-                        # print(price_dict['add_price_list(ideal)'])
-                        target_market_price = price_dict['add_price_list(ideal)'][long_position - 1]
-                        if target_market_price < now_price:
-                            if not trade_auth("buy"):
-                                continue
-                            # 计算目标数量
-                            amount = compute_amount("add", target_market_price)
-                            # 买入
-                            agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
+                        hold_info.pull("pending_order", 1)
+                        time.sleep(10)
+                        continue
 
-                            hold_info.pull("pending_order", 1)
-                            time.sleep(10)
+                # 卖出 ============= SELL =========SELL===========SELL===================== SELL
+
+                # 满仓情况,逐步卖出
+                # print(333)
+                if long_position == hold_info.get("max_long_position") and sell_times <= hold_info.get(
+                        "max_sell_times"):
+                    target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
+                    if now_price < target_market_price:
+                        if not trade_auth("sell"):
                             continue
+                        msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
 
-                    # 卖出 ============= SELL =========SELL===========SELL===================== SELL
+                        # 卖出
+                        ratio = 0.3 if sell_times <= 1 else 0.2
+                        agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
+                        hold_info.pull("pending_order", 1)
+                        # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
+                        time.sleep(10)
+                        continue
 
-                    # 满仓情况,逐步卖出
-                    # print(333)
-                    if long_position == hold_info.get("max_long_position") and sell_times <= hold_info.get(
-                            "max_sell_times"):
-                        target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
-                        if now_price < target_market_price:
-                            if not trade_auth("sell"):
-                                continue
-                            msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
-
-                            # 卖出
-                            ratio = 0.3 if sell_times <= 1 else 0.2
-                            agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
-                            hold_info.pull("pending_order", 1)
-                            # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
-                            time.sleep(10)
-                            continue
-
-                    # 止损
-                    if long_position > 0:
+                # 止损
+                if long_position > 0:
                         # print(666)
                         close_price = price_dict["close_price(ideal)"]
                         if now_price < close_price:
@@ -415,10 +417,6 @@ def circle():
                             hold_info.pull_dict(new_info)
 
 
-                except Exception as e:
-                    # 这里好像没有完全退出
-                    LOGGING.error(f"连接断开，不重新连接，请检查……其他 {e}")
-                    break
 
 
         # 重新尝试连接，使用指数退避策略,针对于“远程计算机拒绝网络连接”错误
@@ -447,5 +445,4 @@ def circle():
 
 if __name__ == '__main__':
     # 开始执行
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    circle()
