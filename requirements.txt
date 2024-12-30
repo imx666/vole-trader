@@ -10,3 +10,4 @@ schedule
 websockets
 pytz
 sqlalchemy
+pandas
