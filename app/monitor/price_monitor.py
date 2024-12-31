@@ -74,8 +74,8 @@ def update_real_time_info(now_price, trading_volume):
 
 
 async def main():
+    reconnect_attempts = 0
     while True:
-        reconnect_attempts = 0
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/public') as websocket:
                 # 发送订阅请求
