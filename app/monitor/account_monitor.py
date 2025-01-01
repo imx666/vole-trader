@@ -84,7 +84,7 @@ class HoldInfo:
     def pull_dict(self, target_dict):
         self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
         self.newest_all()
-        self.LOGGING.info("信息同步redis成功")
+        self.LOGGING.info("信息同步redis成功\n")
 
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
@@ -153,6 +153,7 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
             value = value + fee
             fee = -fee
 
+        # 买入时的总价value是包括手续费的，卖出时的总价是剔除手续费的
         if state == "filled" or state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
             fill_time = int(deal_data["fillTime"])
             sqlManager.update_trade_record(
@@ -192,7 +193,7 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
 
         # 重置余额
         balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
-        init_balance = 100 + balance_delta
+        init_balance = hold_info.get("<init_balance>") + balance_delta
 
         new_info = {
             'execution_cycle': "ready",  # 重置编码
