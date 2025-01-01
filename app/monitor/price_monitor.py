@@ -86,14 +86,26 @@ async def main():
 
                 # 持续监听增量数据
                 while True:
-                    response = await asyncio.wait_for(websocket.recv(), timeout=25)
+                    try:
+                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
 
-                    data_dict = json.loads(response)
-                    now_price = float(data_dict["data"][0]["px"])
-                    trading_volume = float(data_dict["data"][0]["sz"])
+                        data_dict = json.loads(response)
+                        now_price = float(data_dict["data"][0]["px"])
+                        trading_volume = float(data_dict["data"][0]["sz"])
 
-                    # LOGGING.info(f"now_price: {now_price}")
-                    update_real_time_info(now_price, trading_volume)
+                        # LOGGING.info(f"now_price: {now_price}")
+                        update_real_time_info(now_price, trading_volume)
+                    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
+                        try:
+                            await websocket.send('ping')
+                            await websocket.recv()
+                            # res = await websocket.recv()
+                            # LOGGING.info(f"收到: {res}")
+                            continue
+
+                        except Exception as e:
+                            LOGGING.info(f"连接关闭，正在重连…… {e}")
+                            break
 
         # 重新尝试连接，使用指数退避策略
         except websockets.exceptions.ConnectionClosed as e:
