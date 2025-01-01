@@ -158,12 +158,12 @@ def get_real_time_info(target_stock,LOGGING):
         return None
     else:
         latest_update_time = update_time
-        LOGGING.info(update_time, timestamp_ms)
-        LOGGING.info(delta_time)
-        LOGGING.info(decoded_data["now_price"])
-        LOGGING.info("")
+        # LOGGING.info(f"{update_time}, {timestamp_ms}")
+        # LOGGING.info(delta_time)
+        # LOGGING.info(decoded_data["now_price"])
+        # LOGGING.info('\n')
 
-    if delta_time > 6000 * 15:
+    if delta_time > 1000 * 60 * 15:  # 15min
         raise Exception(f"价格数据已经严重滞后: {delta_time / 1000} s")
 
     return decoded_data
