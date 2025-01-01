@@ -61,8 +61,10 @@ class GeniusTrader:
         import okx.PublicData as PublicData
         import okx.MarketData as MarketData
 
-        api_key = os.getenv('API_KEY')
-        secret_key = os.getenv('SECRET_KEY')
+        # api_key = os.getenv('API_KEY')
+        # secret_key = os.getenv('SECRET_KEY')
+        api_key = os.getenv('API_KEY_quant')
+        secret_key = os.getenv('SECRET_KEY_quant')
         passphrase = os.getenv('PASSPHRASE')
         flag = "0"  # 实盘: 0, 模拟盘: 1
 
