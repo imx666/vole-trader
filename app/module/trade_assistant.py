@@ -157,6 +157,7 @@ def get_real_time_info(target_stock):
         latest_update_time = update_time
         print(update_time, timestamp_ms)
         print(delta_time)
+        print(decoded_data["now_price"])
         print()
 
     if delta_time > 6000*15:

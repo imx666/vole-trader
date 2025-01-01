@@ -280,7 +280,7 @@ def circle():
         data_dict = get_real_time_info(target_stock)
         if data_dict is None:
             # print('waiting')
-            time.sleep(0.1)
+            # time.sleep(0.1)
             continue
 
         now_price = data_dict["now_price"]
