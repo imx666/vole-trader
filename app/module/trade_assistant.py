@@ -10,6 +10,8 @@ geniusTrader = GeniusTrader("Assistant")
 
 # 数据库记录
 sqlManager = TradeRecordManager("Assistant")
+
+
 # sqlManager = TradeRecordManager("TURTLE")
 
 class LOGGING_2:
@@ -37,7 +39,7 @@ class TradeAssistant:
         self.sellLmt = None
         self.now_price = None
         self.msg = None
-        
+
         if LOGGING is None:
             self.LOGGING = LOGGING_2
         else:
@@ -136,7 +138,8 @@ origin_int_list = [
 
 latest_update_time = time.time()
 
-def get_real_time_info(target_stock):
+
+def get_real_time_info(target_stock,LOGGING):
     global latest_update_time
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
@@ -155,12 +158,12 @@ def get_real_time_info(target_stock):
         return None
     else:
         latest_update_time = update_time
-        print(update_time, timestamp_ms)
-        print(delta_time)
-        print(decoded_data["now_price"])
-        print()
+        LOGGING.info(update_time, timestamp_ms)
+        LOGGING.info(delta_time)
+        LOGGING.info(decoded_data["now_price"])
+        LOGGING.info("")
 
-    if delta_time > 6000*15:
-        raise Exception(f"价格数据已经严重滞后: {delta_time/1000} s")
+    if delta_time > 6000 * 15:
+        raise Exception(f"价格数据已经严重滞后: {delta_time / 1000} s")
 
     return decoded_data
