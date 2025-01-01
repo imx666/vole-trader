@@ -75,7 +75,11 @@ class GeniusTrader:
 
         # PROXY_URL = "http://127.0.0.1:7890"
         # PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@198.23.239.134:6540'
-        PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@154.36.110.199:6853'
+        LOCATION = os.getenv('LOCATION')
+        if LOCATION == "CHINA":
+            PROXY_URL = 'http://hddoxgop:40ye9ko0kudx@154.36.110.199:6853'
+        else:
+            PROXY_URL = None
 
         self.tradeAPI = Trade.TradeAPI(api_key, secret_key, passphrase, False, flag, proxy=PROXY_URL, debug=False)
         self.accountAPI = Account.AccountAPI(api_key, secret_key, passphrase, False, flag, proxy=PROXY_URL, debug=False)
@@ -420,7 +424,7 @@ class GeniusTrader:
 
         deal_data = result['data'][0]
         side = deal_data["side"]
-        side = "买入" if side == "buy" else "卖出"
+        side11 = "买入" if side == "buy" else "卖出"
         side222 = "花费" if side == "buy" else "收到"
         price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
         price = float(price_str)
@@ -439,12 +443,12 @@ class GeniusTrader:
 
         # self.LOGGING.info(f"{client_order_id[:-10]}: {side}[{state}]")
         self.LOGGING.info(f"{target_stock}")
-        self.LOGGING.info(f"{side}[{state}]")
+        self.LOGGING.info(f"{side11}[{state}]")
         self.LOGGING.info(f"委托价格: {price_str}")
         self.LOGGING.info(f"委托数量: {amount}")
         # self.LOGGING.info(f"共{side}: {round(price * amount, 3)} USDT")
         self.LOGGING.info(f"共{side222}: {price * amount} USDT")
-        if side == "卖出":
+        if side11 == "卖出":
             fee = -fee
             self.LOGGING.info(f"手续费: {round(fee, 10)} USDT")
         else:
@@ -485,10 +489,11 @@ if __name__ == '__main__':
     # amount = genius_trader.stock_handle_info(target_stock)
     # print(f"amount: {amount}")
 
-    # # 买入
-    # amount = 2200
-    # target_market_price = 0.00012345
-    # client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
+    # 买入
+    amount = 2200
+    target_market_price = 0.00012345
+    client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
+    genius_trader.execution_result(client_order_id=client_order_id)
 
     # # 添加一条新记录
     # manager.add_trade_record(
@@ -515,4 +520,4 @@ if __name__ == '__main__':
     # 查看订单执行结果
     # genius_trader.execution_result(target_and_ordId=["OMI-USDT","2006379750208077824"])
     # genius_trader.execution_result(target_and_ordId=["DOGE-USDT","2078711079121231872"])
-    genius_trader.execution_result(client_order_id="FLOKI1734759229556")
+    # genius_trader.execution_result(client_order_id="FLOKI1734759229556")
