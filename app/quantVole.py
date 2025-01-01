@@ -41,8 +41,8 @@ execution_cycle = hold_info.get("execution_cycle")
 # 交易助手
 agent = TradeAssistant('TURTLE', target_stock, trade_type="actual", LOGGING=LOGGING)
 
-# 数据库记录
-sqlManager = TradeRecordManager(target_stock, "TURTLE")
+# # 数据库记录
+# sqlManager = TradeRecordManager(target_stock, "TURTLE")
 
 auth_time = 0
 price_dict = {}
@@ -52,6 +52,8 @@ def trade_auth(side):
     global auth_time
     auth_time += 1
     tradeFlag = hold_info.newest("tradeFlag")
+
+    sqlManager = TradeRecordManager(target_stock, "TURTLE")
 
     record_list_1 = sqlManager.filter_record(state="live")
     record_list_2 = sqlManager.filter_record(state="partially_filled")
@@ -102,8 +104,9 @@ def compute_amount(operation, target_market_price):
 
 
 def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
-    LOGGING.info("计算目标价")
     global price_dict
+    LOGGING.info("计算目标价")
+    sqlManager = TradeRecordManager(target_stock, "TURTLE")
     # print(price_dict)
 
     execution_cycle = hold_info.newest("execution_cycle")
@@ -213,20 +216,18 @@ def timed_task():
     minute = now_bj.minute  # 第几分
 
     if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
-        # if hour_of_day in [0, 4, 8, 12, 16, 20, 13] and minute == 17:
+        # if hour_of_day in [1, 4, 8, 12, 16, 20, 13] and minute == 1:
         global DayStamp
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
         if DayStamp is not None and current_time == DayStamp:
             return
 
-        # # 发微信
-        # res = send_wx_info("读取最新策略参数", f"{current_time}", supreme_auth=True)
-        # LOGGING.info(res)
-
-        load_index_and_compute_price(target_stock)
         DayStamp = current_time
+        redis_okx = redis.Redis.from_url(redis_url)
         redis_okx.hset(f"common_index:{target_stock}", 'last_read_time', current_time)
         LOGGING.info(f"到点了: {current_time} ")
+
+        load_index_and_compute_price(target_stock)
 
         # 取消未成交的挂单
         check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
@@ -275,6 +276,7 @@ def circle():
                     if not trade_auth("buy"):
                         continue
                     # 生成新编号
+                    sqlManager = TradeRecordManager(target_stock, "TURTLE")
                     execution_cycle = sqlManager.generate_execution_cycle()
 
                     # 买入
