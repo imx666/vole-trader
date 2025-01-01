@@ -18,8 +18,10 @@ sys.path.append(dotenv_path)
 dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
 load_dotenv(dotenv_path)  # 载入环境变量
 
-api_key = os.getenv('API_KEY')
-secret_key = os.getenv('SECRET_KEY')
+api_key = os.getenv('API_KEY_quant')
+secret_key = os.getenv('SECRET_KEY_quant')
+# api_key = os.getenv('API_KEY')
+# secret_key = os.getenv('SECRET_KEY')
 passphrase = os.getenv('PASSPHRASE')
 
 import logging.config
@@ -29,7 +31,7 @@ logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("app_01")
 
 from MsgSender.wx_msg import send_wx_info
-from utils.url_center import redis_url
+from utils.url_center import redis_url_fastest
 from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
 
@@ -38,7 +40,7 @@ class HoldInfo:
     def __init__(self, target_stock, LOGGING=None):
         self.target_stock = target_stock
         self.LOGGING = LOGGING
-        self.redis_okx = redis.Redis.from_url(redis_url)
+        self.redis_okx = redis.Redis.from_url(redis_url_fastest)
         self.decoded_data = {}
         self.newest_all()
 
@@ -198,11 +200,10 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
             'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
             'long_position': 0,
             'sell_times': 0,
-            'build_price': 0,
-            'init_balance': init_balance,
-            'risk_rate': 0.0035,
-            'max_long_position': 4,
-            'max_sell_times': 3,
+            '<init_balance>': init_balance,
+            '<risk_rate>': 0.0035,
+            '<max_long_position>': 3,
+            '<max_sell_times>': 3,
         }
     hold_info.pull_dict(new_info)
 
@@ -272,9 +273,9 @@ origin_str_list = [
 ]
 
 origin_int_list = [
-    "max_long_position",
+    "<max_long_position>",
     "long_position",
-    "max_sell_times",
+    "<max_sell_times>",
     "sell_times",
 ]
 
