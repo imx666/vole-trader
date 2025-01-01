@@ -1,7 +1,4 @@
-import json
-import socket
 import time
-
 import redis
 from datetime import datetime, timezone, timedelta
 
@@ -32,16 +29,7 @@ from utils.logging_config import Logging_dict
 logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger(f"quantVole-{sort_name}")
 
-# target_stock = "LUNC-USDT"
-# target_stock = "BTC-USDT"
-# target_stock = "ETH-USDT"
-# target_stock = "FLOKI-USDT"
-# target_stock = "OMI-USDT"
-# target_stock = "DOGE-USDT"
-# target_stock = "PEPE-USDT"
-
-price_dict = {}
-
+# 相关参数
 redis_okx = redis.Redis.from_url(redis_url)
 last_read_time = redis_okx.hget(f"common_index:{target_stock}", 'last_read_time')
 DayStamp = last_read_time.decode() if last_read_time is not None else None
@@ -52,13 +40,12 @@ execution_cycle = hold_info.get("execution_cycle")
 
 # 交易助手
 agent = TradeAssistant('TURTLE', target_stock, trade_type="actual", LOGGING=LOGGING)
-# agent = TradeAssistant('TURTLE', target_stock, trade_type="simulate", LOGGING=LOGGING)
-
 
 # 数据库记录
 sqlManager = TradeRecordManager(target_stock, "TURTLE")
 
 auth_time = 0
+price_dict = {}
 
 
 def trade_auth(side):
@@ -187,6 +174,7 @@ def notice_change(long_position, sell_times):
 
 def load_index_and_compute_price(target_stock):
     # 获取单个字段的值
+    redis_okx = redis.Redis.from_url(redis_url)
     name = redis_okx.hget(f"common_index:{target_stock}", 'update_time')
     if name is None:
         raise Exception(f"load_reference_index: redis: {target_stock}股票参数不存在")
@@ -276,21 +264,18 @@ def circle():
         # 空仓时
         if long_position == 0:
             # print(111)
-            # 计算目标价格
             target_market_price = price_dict['build_price(ideal)']
             if target_market_price < now_price:
                 if not trade_auth("buy"):
                     continue
                 # 生成新编号
                 execution_cycle = sqlManager.generate_execution_cycle()
-                # 计算目标数量
-                amount = compute_amount("build", target_market_price)
-                # 买入
-                agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
 
+                # 买入
+                amount = compute_amount("build", target_market_price)
+                agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
                 new_info = {
                     "pending_order": 1,
-                    # "build_price": target_market_price,
                     "execution_cycle": execution_cycle,  # 同步新编号
                     "tradeFlag": "buy-only"
                 }
@@ -301,35 +286,36 @@ def circle():
         if 0 < long_position < hold_info.get("<max_long_position>"):
             # print(222)
             # print(price_dict)
-            # print(price_dict['add_price_list(ideal)'])
             target_market_price = price_dict['add_price_list(ideal)'][long_position - 1]
             if target_market_price < now_price:
                 if not trade_auth("buy"):
                     continue
-                # 计算目标数量
-                amount = compute_amount("add", target_market_price)
                 # 买入
+                amount = compute_amount("add", target_market_price)
                 agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
-
                 hold_info.pull("pending_order", 1)
                 continue
 
         # 卖出 ============= SELL =========SELL===========SELL===================== SELL
 
         # 满仓情况,逐步卖出
-        # print(333)
         if long_position == hold_info.get("<max_long_position>") and sell_times <= hold_info.get(
                 "<max_sell_times>"):
+            # print(333)
             target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
             if now_price < target_market_price:
                 if not trade_auth("sell"):
                     continue
-                msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
 
                 # 卖出
+                msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
                 ratio = 0.3 if sell_times <= 1 else 0.2
                 agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
-                hold_info.pull("pending_order", 1)
+                new_info = {
+                    "pending_order": 1,
+                    "tradeFlag": "sell-only"
+                }
+                hold_info.pull_dict(new_info)
                 # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
                 continue
 
@@ -340,15 +326,15 @@ def circle():
             if now_price < close_price:
                 if not trade_auth("sell"):
                     continue
+
+                # 卖出
                 msg = price_dict["close_type"]
                 ratio = 1
                 agent.sell(execution_cycle, close_price, ratio, remark=msg)
-
                 new_info = {
                     "pending_order": 1,
                     "tradeFlag": "no-auth"
                 }
-                time.sleep(10)
                 hold_info.pull_dict(new_info)
 
 
