@@ -10,10 +10,10 @@ LOGGING = logging.getLogger("app_01")
 
 import redis
 
-from utils.url_center import redis_url
+from utils.url_center import redis_url_fastest
 from monitor.account_monitor import HoldInfo
 
-redis_okx = redis.Redis.from_url(redis_url)
+redis_okx = redis.Redis.from_url(redis_url_fastest)
 
 if __name__ == '__main__':
     # 指定.env.dev文件的路径
@@ -26,11 +26,9 @@ if __name__ == '__main__':
     dotenv_path = os.path.join(project_path, '../.env.dev')
     load_dotenv(dotenv_path)  # 载入环境变量
 
-    from module.trade_records import TradeRecordManager
 
 
 
-    # target_stock = "LUNC-USDT"
     target_stock = "BTC-USDT"
     target_stock = "DOGE-USDT"
     target_stock = "ETH-USDT"
@@ -38,7 +36,7 @@ if __name__ == '__main__':
     # target_stock = "OMI-USDT"
     # target_stock = "PEPE-USDT"
     target_stock = "XRP-USDT"
-    target_stock = "LUNC-USDT"
+    # target_stock = "LUNC-USDT"
 
 
     # 初始化
@@ -49,10 +47,10 @@ if __name__ == '__main__':
                        'tradeFlag': 'all-auth',
                        'long_position': 0,
                        'sell_times': 0,
-                       'init_balance': 100,
-                       'risk_rate': 0.0035,
-                       'max_long_position': 3,
-                       'max_sell_times': 3,
+                       '<init_balance>': 100,
+                       '<risk_rate>': 0.0035,
+                       '<max_long_position>': 3,
+                       '<max_sell_times>': 3,
                    })
 
     hold_info = HoldInfo(target_stock)
@@ -60,6 +58,7 @@ if __name__ == '__main__':
 
 
     # # 重启redis时
+    # from module.trade_records import TradeRecordManager
     # # execution_cycle = sqlManager.last_execution_cycle(strategy_name)  # 获取编号
     # # execution_cycle = "自己看数据库是哪个编号"
     # execution_cycle = "TURTLE-FLOKI-20241221_0001"
@@ -80,8 +79,8 @@ if __name__ == '__main__':
     #                    'tradeFlag': 'all-auth',
     #                    'long_position': long_position,
     #                    'sell_times': sell_times,
-    #                    'init_balance': init_balance,
-    #                    'risk_rate': 0.0035,
-    #                    'max_long_position': 3,
-    #                    'max_sell_times': 3,
+    #                    '<init_balance>': init_balance,
+    #                    '<risk_rate>': 0.0035,
+    #                    '<max_long_position>': 3,
+    #                    '<max_sell_times>': 3,
     #                })

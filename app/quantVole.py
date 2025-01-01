@@ -5,7 +5,6 @@ import time
 import redis
 from datetime import datetime, timezone, timedelta
 
-
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
 from utils.url_center import redis_url
@@ -41,18 +40,6 @@ LOGGING = logging.getLogger(f"quantVole-{sort_name}")
 # target_stock = "DOGE-USDT"
 # target_stock = "PEPE-USDT"
 
-# 订阅账户频道的消息
-subscribe_msg = {
-    "op": "subscribe",
-    "args": [
-        {
-            # "channel": "price-limit",
-            "channel": "trades",
-            "instId": target_stock
-        }
-    ]
-}
-
 price_dict = {}
 
 redis_okx = redis.Redis.from_url(redis_url)
@@ -65,7 +52,7 @@ execution_cycle = hold_info.get("execution_cycle")
 
 # 交易助手
 agent = TradeAssistant('TURTLE', target_stock, trade_type="actual", LOGGING=LOGGING)
-# agent = TradeAssistant('TURTLE', target_stock, trade_type="simulate")
+# agent = TradeAssistant('TURTLE', target_stock, trade_type="simulate", LOGGING=LOGGING)
 
 
 # 数据库记录
@@ -110,12 +97,12 @@ def trade_auth(side):
 
 
 def compute_amount(operation, target_market_price):
-    amount = round(hold_info.get("risk_rate") * hold_info.get("init_balance") / hold_info.get("ATR"), 5)
+    amount = round(hold_info.get("<risk_rate>") * hold_info.get("<init_balance>") / hold_info.get("ATR"), 5)
     # max_rate = 0.31 if operation == "build" else 0.231
     max_rate, min_rate = 0.31, 0.231
     # min_rate = 0.24 if operation == "build" else 0.171
-    expect_max_cost = hold_info.get("init_balance") * max_rate
-    expect_min_cost = hold_info.get("init_balance") * min_rate
+    expect_max_cost = hold_info.get("<init_balance>") * max_rate
+    expect_min_cost = hold_info.get("<init_balance>") * min_rate
     now_cost = amount * target_market_price
     if now_cost > expect_max_cost:
         LOGGING.info("超预算(减少数量)")
@@ -133,8 +120,6 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
     # print(price_dict)
 
     # 计算目标价格
-    # long_position = hold_info.newest("long_position")
-    # build_price = hold_info.newest("build_price")
     # execution_cycle = hold_info.get("execution_cycle")
     long_position = sqlManager.get(execution_cycle, "long_position")
     build_price = sqlManager.get(execution_cycle, "build_price")
@@ -173,11 +158,11 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         add_price_list = []
         reduce_price_list = []
 
-        for i in range(1, hold_info.get("max_long_position")):
+        for i in range(1, hold_info.get("<max_long_position>")):
             target_market_price = round(build_price + i * 0.5 * ATR, 10)
             add_price_list.append(target_market_price)
 
-        for i in range(0, hold_info.get("max_sell_times")):
+        for i in range(0, hold_info.get("<max_sell_times>")):
             target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
             reduce_price_list.append(target_market_price)
 
@@ -251,8 +236,6 @@ def timed_task():
         LOGGING.info(f"到点了 :{current_time} ")
 
         # 取消未成交的挂单
-        # check_state(target_stock, sqlManager, hold_info, geniusTrader, withdraw_order=True)
-        # check_state(target_stock, withdraw_order=True)
         check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
 
         # 开放交易权限
@@ -273,14 +256,13 @@ def circle():
         # 挂单数大于零直接跳过
         pending_order = hold_info.newest("pending_order")
         if pending_order > 0:
-            # print(12345678)
+            time.sleep(1)
             continue
 
         # 获取最新报价
-        data_dict = get_real_time_info(target_stock)
+        data_dict = get_real_time_info(target_stock, LOGGING)
         if data_dict is None:
-            # print('waiting')
-            # time.sleep(0.1)
+            time.sleep(0.01)
             continue
 
         now_price = data_dict["now_price"]
@@ -316,7 +298,7 @@ def circle():
                 continue
 
         # 未满仓,加仓
-        if 0 < long_position < hold_info.get("max_long_position"):
+        if 0 < long_position < hold_info.get("<max_long_position>"):
             # print(222)
             # print(price_dict)
             # print(price_dict['add_price_list(ideal)'])
@@ -336,8 +318,8 @@ def circle():
 
         # 满仓情况,逐步卖出
         # print(333)
-        if long_position == hold_info.get("max_long_position") and sell_times <= hold_info.get(
-                "max_sell_times"):
+        if long_position == hold_info.get("<max_long_position>") and sell_times <= hold_info.get(
+                "<max_sell_times>"):
             target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
             if now_price < target_market_price:
                 if not trade_auth("sell"):
@@ -368,7 +350,6 @@ def circle():
                 }
                 time.sleep(10)
                 hold_info.pull_dict(new_info)
-
 
 
 if __name__ == '__main__':
