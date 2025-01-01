@@ -107,12 +107,16 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
     # print(price_dict)
 
     # 计算目标价格
-    # execution_cycle = hold_info.get("execution_cycle")
     long_position = sqlManager.get(execution_cycle, "long_position")
     build_price = sqlManager.get(execution_cycle, "build_price")
     total_max_value = sqlManager.get(execution_cycle, "total_max_value")
     total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
     hold_average_price = total_max_value / total_max_amount if total_max_amount > 0 else build_price
+
+    LOGGING.info(f"多头持仓: {long_position}")
+    if long_position > 0:
+        LOGGING.info(f"建仓价: {build_price}")
+        LOGGING.info(f"持仓均价: {hold_average_price}")
 
     # stop_loss_price = round(build_price - 0.5 * ATR, 10)
     stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
@@ -134,14 +138,13 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         'close_price(ideal)': close_price,
         'close_type': close_type,
     }
-    # print(price_dict)
 
     if long_position == 0:
         price_dict_2_redis['build_price(ideal)'] = up_Dochian_price
         price_dict['build_price(ideal)'] = up_Dochian_price
+        LOGGING.info(f"理想建仓价: {up_Dochian_price}")
 
     if long_position > 0:
-        hold_info.remove('build_price(ideal)')
         add_price_list = []
         reduce_price_list = []
 
@@ -163,6 +166,7 @@ def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
         # print(add_price_list)
         # print(price_dict)
 
+    print(price_dict)
     hold_info.pull_dict(price_dict_2_redis)
 
 
