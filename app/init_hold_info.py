@@ -38,6 +38,7 @@ if __name__ == '__main__':
     # target_stock = "OMI-USDT"
     # target_stock = "PEPE-USDT"
     target_stock = "XRP-USDT"
+    target_stock = "LUNC-USDT"
 
 
     # 初始化
