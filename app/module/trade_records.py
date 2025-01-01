@@ -156,8 +156,8 @@ class TradeRecordManager:
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
                     # print(record.amount)
                     total_max_amount += record.amount
-                if operation == 'close' and record.state == 'filled':
-                    raise Exception(f"trade_record实例不存在: {op}")
+                # if operation == 'close' and record.state == 'filled':
+                #     raise Exception(f"trade_record实例不存在: {op}")
             return float(total_max_amount)
 
         if op == 'total_max_value':
@@ -229,6 +229,24 @@ class TradeRecordManager:
             total_value = 0
             filtered_records = (
                 self.session.query(TradeRecord)
+                .filter(TradeRecord.strategy == self.strategy)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                if (operation == 'build' or operation == 'add') and record.state == 'filled':
+                    total_value -= record.value
+                if (operation == 'reduce' or operation == 'close') and record.state == 'filled':
+                    total_value += record.value
+
+            return total_value
+
+        if op == 'delta':
+            total_value = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
                 .filter(TradeRecord.strategy == self.strategy)
                 .filter(TradeRecord.target_stock == self.target_stock)
                 .all()
