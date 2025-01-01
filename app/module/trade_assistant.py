@@ -1,5 +1,6 @@
 from datetime import datetime
 import time
+import redis
 
 from module.genius_trading import GeniusTrader
 from module.trade_records import TradeRecordManager
@@ -116,3 +117,49 @@ class TradeAssistant:
             amount=amount,
             value=round(target_market_price * amount, 3),
         )
+
+
+from utils.url_center import redis_url_fastest
+
+redis_fastest = redis.Redis.from_url(redis_url_fastest)
+origin_str_list = [
+    "execution_cycle",
+    "update_time(24时制)",
+]
+
+origin_int_list = [
+    "update_time",
+    "long_position",
+    "max_sell_times",
+    "sell_times",
+]
+
+latest_update_time = time.time()
+
+def get_real_time_info(target_stock):
+    global latest_update_time
+    timestamp_seconds = time.time()
+    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+    all_info = redis_fastest.hgetall(f"real_time_index:{target_stock}")
+    decoded_data = {}
+    for k, v in all_info.items():
+        if k.decode('utf-8') in origin_str_list:
+            decoded_data[k.decode('utf-8')] = v.decode('utf-8')
+        elif k.decode('utf-8') in origin_int_list:
+            decoded_data[k.decode('utf-8')] = int(v.decode('utf-8'))
+        else:
+            decoded_data[k.decode('utf-8')] = float(v.decode('utf-8'))
+    update_time = decoded_data["update_time"]
+    delta_time = timestamp_ms - update_time
+    if update_time == latest_update_time:
+        return None
+    else:
+        latest_update_time = update_time
+        print(update_time, timestamp_ms)
+        print(delta_time)
+        print()
+
+    if delta_time > 6000*15:
+        raise Exception(f"价格数据已经严重滞后: {delta_time/1000} s")
+
+    return decoded_data
