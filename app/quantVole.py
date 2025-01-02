@@ -103,6 +103,18 @@ def compute_amount(operation, target_market_price):
     return amount
 
 
+def slip(now_price):
+    if now_price > 1000:
+        return 1
+    if now_price > 100:
+        return 0.2
+    if now_price > 10:
+        return 0.1
+    if now_price > 1:
+        return 0.01
+    return now_price / 1000
+
+
 def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
     global price_dict
     LOGGING.info("计算目标价")
@@ -273,7 +285,7 @@ def circle():
             if long_position == 0:
                 # print(111)
                 target_market_price = price_dict['build_price(ideal)']
-                if target_market_price < now_price:
+                if target_market_price < now_price - slip(now_price):
                     if not trade_auth("buy"):
                         continue
                     # 生成新编号
@@ -296,7 +308,7 @@ def circle():
                 # print(222)
                 # print(price_dict)
                 target_market_price = price_dict['add_price_list(ideal)'][long_position - 1]
-                if target_market_price < now_price:
+                if target_market_price < now_price - slip(now_price):
                     if not trade_auth("buy"):
                         continue
                     # 买入
@@ -308,7 +320,7 @@ def circle():
             # 卖出 ============= SELL =========SELL===========SELL===================== SELL
 
             # 满仓情况,逐步卖出
-            if long_position == hold_info.get("<max_long_position>") and sell_times <= hold_info.get(
+            if long_position == hold_info.get("<max_long_position>") and sell_times < hold_info.get(
                     "<max_sell_times>"):
                 # print(333)
                 target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
@@ -321,7 +333,7 @@ def circle():
                     ratio = 0.3 if sell_times <= 1 else 0.2
                     operation = "reduce"
                     tradeFlag = "sell-only"
-                    if sell_times == hold_info.get("<max_sell_times>"):
+                    if sell_times == hold_info.get("<max_sell_times>") - 1:  # 不能是完全的多头满的状态来
                         ratio = 1
                         operation = "close"
                         tradeFlag = "no-auth"
