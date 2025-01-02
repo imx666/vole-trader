@@ -106,7 +106,8 @@ class HoldInfo:
 
 
 def check_state(hold_stock, withdraw_order=False, LOGGING=None):
-    LOGGING.info(f"\n检查更新状态: {hold_stock}")
+    LOGGING.info(f"\n")
+    LOGGING.info(f"检查更新状态: {hold_stock}")
 
     # 持仓信息
     hold_info = HoldInfo(hold_stock, LOGGING)
@@ -184,17 +185,24 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     LOGGING.info(new_info)
 
     # 如果此编号的状态是已完成，周期结束后，遇到close的情况下
-    execution_state = sqlManager.get(execution_cycle, "execution_state")
+    execution_state, client_order_id = sqlManager.get(execution_cycle, "execution_state")
     if execution_state == "completed":
         LOGGING.info("平仓已经完成，重置redis信息")
         hold_info.remove('add_price_list(ideal)')
         hold_info.remove('reduce_price_list(ideal)')
         hold_info.remove('close_price(ideal)')
+        hold_info.remove('build_price(ideal)')
+
+        # 对这一轮进行评估
+        delta, profit_rate = sqlManager.get(execution_cycle, "delta")  # 虽然需要传编号，但是计算价差是用不着的
+        init_balance = hold_info.get("<init_balance>") + delta
+        sqlManager.update_trade_record(
+            client_order_id,
+            delta=delta,
+            profit_rate=profit_rate,
+        )
 
         # 重置余额
-        balance_delta = sqlManager.get(execution_cycle, "balance_delta")  # 虽然需要传编号，但是计算价差是用不着的
-        init_balance = hold_info.get("<init_balance>") + balance_delta
-
         new_info = {
             'execution_cycle': "ready",  # 重置编码
             'pending_order': 0,
@@ -202,9 +210,6 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
             'long_position': 0,
             'sell_times': 0,
             '<init_balance>': init_balance,
-            '<risk_rate>': 0.0035,
-            '<max_long_position>': 3,
-            '<max_sell_times>': 3,
         }
     hold_info.pull_dict(new_info)
 
