@@ -139,7 +139,7 @@ origin_int_list = [
 latest_update_time = time.time()
 
 
-def get_real_time_info(target_stock,LOGGING):
+def get_real_time_info(target_stock, LOGGING):
     global latest_update_time
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
@@ -167,3 +167,42 @@ def get_real_time_info(target_stock,LOGGING):
         raise Exception(f"价格数据已经严重滞后: {delta_time / 1000} s")
 
     return decoded_data
+
+
+def slip(now_price):
+    if now_price > 1000:
+        return 1
+    if now_price > 100:
+        return 0.2
+    if now_price > 10:
+        return 0.1
+    if now_price > 1:
+        return 0.01
+    return now_price / 1000
+
+from utils.url_center import redis_url
+
+
+def load_index(target_stock):
+    # 获取单个字段的值
+    redis_okx = redis.Redis.from_url(redis_url)
+    name = redis_okx.hget(f"common_index:{target_stock}", 'update_time')
+    if name is None:
+        raise Exception(f"load_reference_index: redis: {target_stock}股票参数不存在")
+
+    last_time = name.decode()
+
+    # 获取整个哈希表的所有字段和值
+    all_info = redis_okx.hgetall(f"common_index:{target_stock}")
+
+    # 解码每个键和值
+    decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
+    # LOGGING.info(decoded_data)
+
+    up_Dochian_price = float(decoded_data['history_max_price'])
+    down_Dochian_price = float(decoded_data['history_min_price'])
+    ATR = float(decoded_data['ATR'])
+
+
+    return up_Dochian_price, down_Dochian_price, ATR, last_time
+
