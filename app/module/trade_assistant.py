@@ -55,12 +55,12 @@ class TradeAssistant:
         self.LOGGING.info(f"目标价: {target_market_price}, 数量: {amount}")
         # self.LOGGING.info(f"买限: {self.buyLmt}, 卖限: {self.sellLmt}")
 
-    def sell(self, execution_cycle, target_market_price, ratio, remark=None):
+    def sell(self, operation, execution_cycle, target_market_price, ratio, remark=None):
         total_max_amount = self.sqlManager.get(execution_cycle, "total_max_amount")
         target_amount = total_max_amount * ratio
         rest_amount = self.sqlManager.get(execution_cycle, "rest_amount")
         amount = rest_amount if rest_amount < target_amount else target_amount
-        operation = "close" if rest_amount <= target_amount else "reduce"
+        # operation = "close" if rest_amount <= target_amount else "reduce"
 
         if self.trade_type == "simulate":
             self.simulate(execution_cycle, operation, target_market_price, amount)

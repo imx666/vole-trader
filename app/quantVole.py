@@ -319,10 +319,16 @@ def circle():
                     # 卖出
                     msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
                     ratio = 0.3 if sell_times <= 1 else 0.2
-                    agent.sell(execution_cycle, target_market_price, ratio, remark=msg)
+                    operation = "reduce"
+                    tradeFlag = "sell-only"
+                    if sell_times == hold_info.get("<max_sell_times>"):
+                        ratio = 1
+                        operation = "close"
+                        tradeFlag = "no-auth"
+                    agent.sell(operation, execution_cycle, target_market_price, ratio, remark=msg)
                     new_info = {
                         "pending_order": 1,
-                        "tradeFlag": "sell-only"
+                        "tradeFlag": tradeFlag
                     }
                     hold_info.pull_dict(new_info)
                     # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
@@ -339,7 +345,7 @@ def circle():
                     # 卖出
                     msg = price_dict["close_type"]
                     ratio = 1
-                    agent.sell(execution_cycle, close_price, ratio, remark=msg)
+                    agent.sell("close", execution_cycle, close_price, ratio, remark=msg)
                     new_info = {
                         "pending_order": 1,
                         "tradeFlag": "no-auth"
