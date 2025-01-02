@@ -222,8 +222,8 @@ class TradeRecordManager:
             for record in filtered_records:
                 operation = record.operation
                 if operation == 'close' and record.state == 'filled':
-                    return "completed"
-            return "running"
+                    return "completed", record.client_order_id
+            return "running", 0
 
         if op == 'balance_delta':
             total_value = 0
@@ -243,7 +243,9 @@ class TradeRecordManager:
             return total_value
 
         if op == 'delta':
-            total_value = 0
+            flag = 0
+            spend_value = 0
+            receive_value = 0
             filtered_records = (
                 self.session.query(TradeRecord)
                 .filter(TradeRecord.execution_cycle == execution_cycle)
@@ -254,11 +256,20 @@ class TradeRecordManager:
             for record in filtered_records:
                 operation = record.operation
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
-                    total_value -= record.value
+                    spend_value += record.value
+                    print('add',record.value)
                 if (operation == 'reduce' or operation == 'close') and record.state == 'filled':
-                    total_value += record.value
+                    receive_value += record.value
+                    print('reduce',record.value)
+                if operation == 'close' and record.state == 'filled':
+                    flag = 1
 
-            return total_value
+            if flag == 0:
+                raise Exception(f"trade_record: 此执行编号未存在close操作，无法计算delta, profit_rate")
+
+            delta = receive_value - spend_value
+            profit_rate = delta/spend_value
+            return delta, profit_rate
 
         if op == 'sell_times':
             sell_time = 0
