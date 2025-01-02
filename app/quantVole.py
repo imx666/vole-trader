@@ -217,7 +217,7 @@ def timed_task():
 
     if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
         # if hour_of_day in [1, 4, 8, 12, 16, 20, 13] and minute == 1:
-        global DayStamp
+        global DayStamp, auth_time
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
         if DayStamp is not None and current_time == DayStamp:
             return
@@ -226,6 +226,7 @@ def timed_task():
         redis_okx = redis.Redis.from_url(redis_url)
         redis_okx.hset(f"common_index:{target_stock}", 'last_read_time', current_time)
         LOGGING.info(f"到点了: {current_time} ")
+        auth_time = 0
 
         load_index_and_compute_price(target_stock)
 
@@ -233,7 +234,7 @@ def timed_task():
         check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
 
         # 开放交易权限
-        hold_info.pull("tradeFlag", "all-auth")  # 同步新编号
+        hold_info.pull("tradeFlag", "all-auth")
 
         LOGGING.info(f"持续跟踪价格中...")
 
@@ -243,8 +244,8 @@ def circle():
     # 计算目标价
     load_index_and_compute_price(target_stock)
 
-    while True:
-        try:
+    try:
+        while True:
             # 更新策略参数
             timed_task()
 
@@ -344,8 +345,8 @@ def circle():
                         "tradeFlag": "no-auth"
                     }
                     hold_info.pull_dict(new_info)
-        except Exception as e:
-            LOGGING.error(e)
+    except Exception as e:
+        LOGGING.error(e)
 
 
 if __name__ == '__main__':
