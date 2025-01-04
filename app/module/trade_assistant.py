@@ -130,7 +130,8 @@ class TradeAssistant:
         )
 
 
-def get_real_time_info(target_stock, LOGGING):
+def get_real_time_info(target_stock):
+    LOGGING = hold_info.LOGGING
     global latest_update_time
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
@@ -225,7 +226,6 @@ def compute_sb_price(target_stock):
     LOGGING.info(up_Dochian_price)
     LOGGING.info(down_Dochian_price)
 
-    global price_dict
     LOGGING.info("计算目标价")
     long_position = hold_info.newest("long_position")
     execution_cycle = hold_info.newest("execution_cycle")
