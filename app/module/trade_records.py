@@ -1,6 +1,7 @@
 import time
 # import datetime
 from datetime import datetime
+from functools import wraps
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Numeric
 from sqlalchemy.orm import sessionmaker
@@ -23,8 +24,6 @@ class TradeRecord(Base):
     create_time = Column(DateTime)
     fill_time = Column(DateTime)
     client_order_id = Column(String(255))  # 客户端订单ID
-    # amount = Column(Numeric(16, 10))  # 数量，使用 Float 类型
-    # amount = Column(Numeric(16, 7))  # 数量，使用 Float 类型
     amount = Column(Numeric(16, 8))  # 数量，使用 Float 类型
     price = Column(Numeric(16, 10))  # 价格，使用 Float 类型
     value = Column(Float)  # 成交金额，也建议使用 Float 类型
@@ -60,12 +59,34 @@ class TradeRecord(Base):
 # Base.metadata.create_all(engine)
 
 from utils.url_center import DATABASE_URL
+
 # DATABASE_URL = 'mysql+pymysql://root:123456@172.155.0.3:3306/trading_db'
 engine = create_engine(DATABASE_URL, pool_recycle=3600)
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 创建所有定义的表
 Base.metadata.create_all(bind=engine)
+
+
+def refresh_cache(method):
+    """
+    装饰器：在每次方法调用前刷新 SQLAlchemy 会话缓存。
+    """
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        # 刷新会话缓存
+        # self.session.close()  # 关闭当前会话
+        # self.session = Session()  # 创建新会话
+        # self.session.expire_all()
+        # self.session.refresh(instance)
+        # self.session.commit()
+        self.session.commit()
+
+        # 执行原方法
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class TradeRecordManager:
@@ -107,6 +128,7 @@ class TradeRecordManager:
             return name
         return None
 
+    @refresh_cache
     def filter_record(self, state, new_stock=None):
         # print(12345, new_stock)
         if new_stock is None:
@@ -126,6 +148,7 @@ class TradeRecordManager:
 
         return record_list
 
+    @refresh_cache
     def get(self, execution_cycle, op):
         if op == 'long_position':
             long_position = 0
@@ -142,6 +165,25 @@ class TradeRecordManager:
                 if operation == 'close' and record.state == 'filled':
                     return 0
             return long_position
+
+        if op == 'sell_times':
+            sell_time = 0
+            filtered_records = (
+                self.session.query(TradeRecord)
+                .filter(TradeRecord.target_stock == self.target_stock)
+                .filter(TradeRecord.execution_cycle == execution_cycle)
+                .all()
+            )
+            for record in filtered_records:
+                operation = record.operation
+                # if operation == 'reduce' and record.state != 'canceled':  # 可能部分成交，但是不能是live啊
+                if operation == 'reduce' and record.state == 'filled':
+                    sell_time += 1
+                # if operation == 'close' and record.state != 'canceled':
+                if operation == 'close' and record.state == 'filled':
+                    return 0
+                    # raise Exception(f"trade_record实例不存在: {op}")
+            return sell_time
 
         if op == 'total_max_amount':
             total_max_amount = 0
@@ -212,7 +254,7 @@ class TradeRecordManager:
                     raise Exception(f"trade_record实例不存在: {op}")
             return total_value
 
-        if op == 'execution_state':
+        if op == 'build_price':
             filtered_records = (
                 self.session.query(TradeRecord)
                 .filter(TradeRecord.target_stock == self.target_stock)
@@ -220,10 +262,41 @@ class TradeRecordManager:
                 .all()
             )
             for record in filtered_records:
-                operation = record.operation
-                if operation == 'close' and record.state == 'filled':
-                    return "completed", record.client_order_id
-            return "running", 0
+                if record.operation == 'close' and record.state == 'filled':
+                    raise Exception(f"trade_record: 此执行编号已存在close操作，请启用新的执行编号")
+                    # return 0
+
+            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
+                TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
+                TradeRecord.operation == "build").first()
+            if trade_record:
+                open_price = trade_record.price
+                return float(open_price)
+            else:
+                return 0
+                # raise Exception(f"trade_record实例不存在: {op}")
+
+        if op == 'last_hold_price':  # 使用按时间倒序查询，即最晚的
+            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
+                TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
+                TradeRecord.operation == "add").order_by(TradeRecord.create_time.desc()).first()
+            if trade_record:
+                open_price = trade_record.price
+                return float(open_price)
+            else:
+                raise Exception(f"trade_record实例不存在: {op}")
+
+        # if op == 'execution_state':
+        #     filtered_records = (
+        #         self.session.query(TradeRecord)
+        #         .filter(TradeRecord.target_stock == self.target_stock)
+        #         .filter(TradeRecord.execution_cycle == execution_cycle)
+        #         .all()
+        #     )
+        #     for record in filtered_records:
+        #         if record.operation == 'close' and record.state == 'filled':
+        #             return "completed", record.client_order_id
+        #     return "running", 0
 
         if op == 'balance_delta':
             total_value = 0
@@ -257,10 +330,10 @@ class TradeRecordManager:
                 operation = record.operation
                 if (operation == 'build' or operation == 'add') and record.state == 'filled':
                     spend_value += record.value
-                    print('add',record.value)
+                    print('add', record.value)
                 if (operation == 'reduce' or operation == 'close') and record.state == 'filled':
                     receive_value += record.value
-                    print('reduce',record.value)
+                    print('reduce', record.value)
                 if operation == 'close' and record.state == 'filled':
                     flag = 1
 
@@ -268,60 +341,10 @@ class TradeRecordManager:
                 raise Exception(f"trade_record: 此执行编号未存在close操作，无法计算delta, profit_rate")
 
             delta = receive_value - spend_value
-            profit_rate = delta/spend_value
+            profit_rate = delta / spend_value
             return delta, profit_rate
 
-        if op == 'sell_times':
-            sell_time = 0
-            filtered_records = (
-                self.session.query(TradeRecord)
-                .filter(TradeRecord.target_stock == self.target_stock)
-                .filter(TradeRecord.execution_cycle == execution_cycle)
-                .all()
-            )
-            for record in filtered_records:
-                operation = record.operation
-                # if operation == 'reduce' and record.state != 'canceled':  # 可能部分成交，但是不能是live啊
-                if operation == 'reduce' and record.state == 'filled':
-                    sell_time += 1
-                # if operation == 'close' and record.state != 'canceled':
-                if operation == 'close' and record.state == 'filled':
-                    return 0
-                    # raise Exception(f"trade_record实例不存在: {op}")
-            return sell_time
-
-        if op == 'build_price':
-            filtered_records = (
-                self.session.query(TradeRecord)
-                .filter(TradeRecord.target_stock == self.target_stock)
-                .filter(TradeRecord.execution_cycle == execution_cycle)
-                .all()
-            )
-            for record in filtered_records:
-                if record.operation == 'close' and record.state == 'filled':
-                    raise Exception(f"trade_record: 此执行编号已存在close操作，请启用新的执行编号")
-                    # return 0
-
-            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
-                TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
-                TradeRecord.operation == "build").first()
-            if trade_record:
-                open_price = trade_record.price
-                return float(open_price)
-            else:
-                return 0
-                # raise Exception(f"trade_record实例不存在: {op}")
-
-        if op == 'last_hold_price':
-            trade_record = self.session.query(TradeRecord).filter(TradeRecord.target_stock == self.target_stock).filter(
-                TradeRecord.execution_cycle == execution_cycle).filter(TradeRecord.state == "filled").filter(
-                TradeRecord.operation == "add").order_by(TradeRecord.create_time.desc()).first()
-            if trade_record:
-                open_price = trade_record.price
-                return float(open_price)
-            else:
-                raise Exception(f"trade_record实例不存在: {op}")
-
+    @refresh_cache
     def add_trade_record(self, **kwargs):
         """添加一条新的交易记录"""
         trade_record = TradeRecord(
@@ -344,15 +367,19 @@ class TradeRecordManager:
         print(f"Added trade record: {trade_record}")
         return trade_record
 
-    def get_trade_record(self, trade_id):
+    @refresh_cache
+    def get_trade_record(self, execution_cycle):
         """获取指定ID的交易记录"""
-        trade_record = self.session.query(TradeRecord).filter_by(id=trade_id).first()
+        trade_record = self.session.query(TradeRecord).filter_by(execution_cycle=execution_cycle).order_by(
+            TradeRecord.create_time.desc()).first()
+
         if trade_record:
-            return trade_record
+            return to_dict(trade_record)
         else:
-            print(f"No trade record found with id: {trade_id}")
+            print(f"No trade record found with id: {execution_cycle}")
             return None
 
+    @refresh_cache
     def update_trade_record(self, trade_id, **kwargs):
         """更新指定ID的交易记录"""
         trade_record = self.session.query(TradeRecord).filter_by(client_order_id=trade_id).first()
@@ -378,6 +405,13 @@ class TradeRecordManager:
         else:
             print(f"No trade record found with id: {trade_id}")
             return False
+
+
+def to_dict(instance):
+    if instance is None:
+        return None
+    return {key: value for key, value in instance.__dict__.items() if not key.startswith('_')}
+
 
 
 if __name__ == "__main__":
