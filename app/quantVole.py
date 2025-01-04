@@ -1,3 +1,4 @@
+import sys
 import time
 import redis
 from datetime import datetime, timezone, timedelta
@@ -6,12 +7,8 @@ from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
 from utils.url_center import redis_url
 from module.trade_records import TradeRecordManager
-from module.trade_assistant import TradeAssistant
-from module.trade_assistant import get_real_time_info, slip, load_index
-from monitor.account_monitor import check_state
-from monitor.account_monitor import HoldInfo
-
-import sys
+from monitor.account_monitor import HoldInfo, check_state
+from module.trade_assistant import TradeAssistant, get_real_time_info, slip, load_index
 
 # 第一个参数是脚本名称，后续的是传入的参数
 if len(sys.argv) > 1:
@@ -85,6 +82,13 @@ def trade_auth(side):
     return False
 
 
+def notice_change(long_position, sell_times):
+    if long_position != hold_info.get("long_position") or sell_times != hold_info.get("sell_times"):
+        LOGGING.info("持仓发生变化,立即拉取redis")
+        # load_index_and_compute_price(target_stock)
+        compute_sb_price(target_stock)
+
+
 def compute_amount(operation, target_market_price):
     amount = round(hold_info.get("<risk_rate>") * hold_info.get("<init_balance>") / hold_info.get("ATR"), 8)
     if operation == "build":
@@ -103,73 +107,6 @@ def compute_amount(operation, target_market_price):
         amount = expect_min_cost / target_market_price
 
     return amount
-
-
-# def compute_target_price(ATR, up_Dochian_price, down_Dochian_price):
-#     global price_dict
-#     LOGGING.info("计算目标价")
-#     sqlManager = TradeRecordManager(target_stock, "TURTLE")
-#
-#     execution_cycle = hold_info.newest("execution_cycle")
-#     long_position = hold_info.newest("long_position")
-#     build_price = sqlManager.get(execution_cycle, "build_price")
-#     total_max_value = sqlManager.get(execution_cycle, "total_max_value")
-#     total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
-#     hold_average_price = total_max_value / total_max_amount if total_max_amount > 0 else build_price
-#
-#     LOGGING.info(f"多头持仓: {long_position}")
-#     if long_position > 0:
-#         LOGGING.info(f"建仓价: {build_price}")
-#         LOGGING.info(f"持仓均价: {hold_average_price}")
-#
-#     # stop_loss_price = round(build_price - 0.5 * ATR, 10)
-#     stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
-#
-#     if stop_loss_price > down_Dochian_price:
-#         close_price = stop_loss_price
-#         close_type = "-0.5N线"
-#     else:
-#         close_price = down_Dochian_price
-#         close_type = "唐奇安下线"
-#
-#     price_dict_2_redis = {
-#         'ATR': ATR,
-#         '平仓价(-0.5N线)': '未建仓' if long_position == 0 else stop_loss_price,
-#     }
-#
-#     price_dict = {
-#         'ATR': ATR,
-#         'close_price(ideal)': close_price,
-#         'close_type': close_type,
-#     }
-#
-#     if long_position == 0:
-#         price_dict_2_redis['build_price(ideal)'] = up_Dochian_price
-#         price_dict['build_price(ideal)'] = up_Dochian_price
-#         LOGGING.info(f"理想建仓价: {up_Dochian_price}")
-#
-#     if long_position > 0:
-#         add_price_list = []
-#         reduce_price_list = []
-#
-#         for i in range(1, hold_info.get("<max_long_position>")):
-#             target_market_price = round(build_price + i * 0.5 * ATR, 10)
-#             add_price_list.append(target_market_price)
-#
-#         for i in range(0, hold_info.get("<max_sell_times>")):
-#             target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
-#             reduce_price_list.append(target_market_price)
-#
-#         price_dict_2_redis['close_price(ideal)'] = close_price
-#         price_dict_2_redis['add_price_list(ideal)'] = str(add_price_list)
-#         price_dict_2_redis['reduce_price_list(ideal)'] = str(reduce_price_list)
-#         price_dict['close_price(ideal)'] = close_price
-#         price_dict['close_type'] = close_type
-#         price_dict['add_price_list(ideal)'] = add_price_list
-#         price_dict['reduce_price_list(ideal)'] = reduce_price_list
-#
-#     LOGGING.info(price_dict)
-#     hold_info.pull_dict(price_dict_2_redis)
 
 
 def compute_sb_price(target_stock):
@@ -195,6 +132,7 @@ def compute_sb_price(target_stock):
         LOGGING.info(f"建仓价: {build_price}")
         LOGGING.info(f"持仓均价: {hold_average_price}")
 
+    # 成本平仓价
     stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
 
     if stop_loss_price > down_Dochian_price:
@@ -207,6 +145,7 @@ def compute_sb_price(target_stock):
     price_dict_2_redis = {
         'ATR': ATR,
         '平仓价(-0.5N线)': '未建仓' if long_position == 0 else stop_loss_price,
+        'close_price(ideal)': close_price,
     }
 
     price_dict = {
@@ -232,51 +171,14 @@ def compute_sb_price(target_stock):
             target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
             reduce_price_list.append(target_market_price)
 
-        price_dict_2_redis['close_price(ideal)'] = close_price
         price_dict_2_redis['add_price_list(ideal)'] = str(add_price_list)
         price_dict_2_redis['reduce_price_list(ideal)'] = str(reduce_price_list)
-        price_dict['close_price(ideal)'] = close_price
-        price_dict['close_type'] = close_type
         price_dict['add_price_list(ideal)'] = add_price_list
         price_dict['reduce_price_list(ideal)'] = reduce_price_list
 
-    LOGGING.info(price_dict)
     hold_info.pull_dict(price_dict_2_redis)
-
-def notice_change(long_position, sell_times):
-    if long_position != hold_info.get("long_position") or sell_times != hold_info.get("sell_times"):
-        LOGGING.info("持仓发生变化,立即拉取redis")
-        # load_index_and_compute_price(target_stock)
-        compute_sb_price(target_stock)
-
-
-
-# def load_index_and_compute_price(target_stock):
-#     # 获取单个字段的值
-#     redis_okx = redis.Redis.from_url(redis_url)
-#     name = redis_okx.hget(f"common_index:{target_stock}", 'update_time')
-#     if name is None:
-#         raise Exception(f"load_reference_index: redis: {target_stock}股票参数不存在")
-#
-#     name = name.decode()
-#     LOGGING.info(f"开始更新参数, 上次更新时间: {name}")
-#
-#     # 获取整个哈希表的所有字段和值
-#     all_info = redis_okx.hgetall(f"common_index:{target_stock}")
-#
-#     # 解码每个键和值
-#     decoded_data = {k.decode('utf-8'): v.decode('utf-8') for k, v in all_info.items()}
-#     # LOGGING.info(decoded_data)
-#
-#     up_Dochian_price = float(decoded_data['history_max_price'])
-#     down_Dochian_price = float(decoded_data['history_min_price'])
-#     ATR = float(decoded_data['ATR'])
-#
-#     LOGGING.info(ATR)
-#     LOGGING.info(up_Dochian_price)
-#     LOGGING.info(down_Dochian_price)
-#
-#     compute_target_price(ATR, up_Dochian_price, down_Dochian_price)
+    LOGGING.info(price_dict)
+    LOGGING.info(f"持续跟踪价格中...")
 
 
 def timed_task():
@@ -299,16 +201,14 @@ def timed_task():
         LOGGING.info(f"到点了: {current_time} ")
         auth_time = 0
 
-        # load_index_and_compute_price(target_stock)
-        compute_sb_price(target_stock)
-
         # 取消未成交的挂单
         check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
 
         # 开放交易权限
         hold_info.pull("tradeFlag", "all-auth")
 
-        LOGGING.info(f"持续跟踪价格中...")
+        # load_index_and_compute_price(target_stock)
+        compute_sb_price(target_stock)
 
 
 def circle():
@@ -324,7 +224,8 @@ def circle():
 
             # 挂单数大于零直接跳过
             pending_order = hold_info.newest("pending_order")
-            if pending_order > 0:
+            long_position = hold_info.newest("long_position")
+            if pending_order > 0 and long_position == 0:  # 空仓有挂单可以直接跳过
                 time.sleep(1)
                 continue
 
@@ -336,7 +237,6 @@ def circle():
 
             now_price = data_dict["now_price"]
             agent.now_price = now_price
-            long_position = hold_info.newest("long_position")
             sell_times = hold_info.newest("sell_times")
 
             # 更新策略参数
@@ -344,7 +244,6 @@ def circle():
 
             # 空仓时
             if long_position == 0:
-                # print(111)
                 target_market_price = price_dict['build_price(ideal)']
                 if target_market_price < now_price - slip(now_price):
                     if not trade_auth("buy"):
@@ -366,8 +265,6 @@ def circle():
 
             # 未满仓,加仓
             if 0 < long_position < hold_info.get("<max_long_position>"):
-                # print(222)
-                # print(price_dict)
                 target_market_price = price_dict['add_price_list(ideal)'][long_position - 1]
                 if target_market_price < now_price - slip(now_price):
                     if not trade_auth("buy"):
@@ -380,10 +277,30 @@ def circle():
 
             # 卖出 ============= SELL =========SELL===========SELL===================== SELL
 
+            if long_position > 0:  # 有持仓的情况下，判断完止损后再跳
+                # 止损
+                close_price = price_dict["close_price(ideal)"]
+                if now_price < close_price:
+                    if not trade_auth("sell"):
+                        continue
+
+                    # 取消所有挂单，并平仓
+                    check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
+
+                    # 卖出
+                    msg = price_dict["close_type"]
+                    ratio = 1
+                    agent.sell("close", execution_cycle, close_price, ratio, remark=msg)
+                    new_info = {
+                        "pending_order": 1,
+                        "tradeFlag": "no-auth"
+                    }
+                    hold_info.pull_dict(new_info)
+                    continue
+
             # 满仓情况,逐步卖出
             if long_position == hold_info.get("<max_long_position>") and sell_times < hold_info.get(
                     "<max_sell_times>"):
-                # print(333)
                 target_market_price = price_dict['reduce_price_list(ideal)'][sell_times]
                 if now_price < target_market_price:
                     if not trade_auth("sell"):
@@ -402,26 +319,27 @@ def circle():
                         "tradeFlag": "sell-only"  # 不能给no-auth，任何时候都得保证最后的平仓可以顺利进行
                     }
                     hold_info.pull_dict(new_info)
-                    # 判断是否为全卖空，全卖完还要记得"tradeFlag": "no-auth"
                     continue
 
-            # 止损
-            if long_position > 0:
-                # print(666)
-                close_price = price_dict["close_price(ideal)"]
-                if now_price < close_price:
+                if now_price > target_market_price:
                     if not trade_auth("sell"):
                         continue
 
                     # 卖出
-                    msg = price_dict["close_type"]
-                    ratio = 1
-                    agent.sell("close", execution_cycle, close_price, ratio, remark=msg)
+                    msg = f"减仓<市价>(+{0.5 * sell_times + 2}N线, 分批止盈)"
+                    ratio = 0.3 if sell_times <= 1 else 0.2
+                    operation = "reduce"
+                    if sell_times == hold_info.get("<max_sell_times>") - 1:  # 不能是完全的多头满的状态来
+                        ratio = 1
+                        operation = "close"
+                    agent.sell(operation, execution_cycle, target_market_price, ratio, remark=msg, order_type="market")
                     new_info = {
                         "pending_order": 1,
-                        "tradeFlag": "no-auth"
+                        "tradeFlag": "sell-only"  # 不能给no-auth，任何时候都得保证最后的平仓可以顺利进行
                     }
                     hold_info.pull_dict(new_info)
+                    continue
+
     except Exception as e:
         LOGGING.error(e)
 

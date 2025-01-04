@@ -55,7 +55,7 @@ class TradeAssistant:
         self.LOGGING.info(f"目标价: {target_market_price}, 数量: {amount}")
         # self.LOGGING.info(f"买限: {self.buyLmt}, 卖限: {self.sellLmt}")
 
-    def sell(self, operation, execution_cycle, target_market_price, ratio, remark=None):
+    def sell(self, operation, execution_cycle, target_market_price, ratio, remark=None, order_type="limit"):
         total_max_amount = self.sqlManager.get(execution_cycle, "total_max_amount")
         target_amount = total_max_amount * ratio
         rest_amount = self.sqlManager.get(execution_cycle, "rest_amount")
@@ -68,7 +68,8 @@ class TradeAssistant:
 
         self.msg = operation if remark is None else remark
         self.show_moment(target_market_price, amount)
-        client_order_id, timestamp_ms = self.geniusTrader.sell_order(amount=amount, price=target_market_price)
+        client_order_id, timestamp_ms = self.geniusTrader.sell_order(amount=amount, price=target_market_price,
+                                                                     order_type=order_type)
 
         # 添加一条新记录
         self.sqlManager.add_trade_record(
@@ -82,14 +83,15 @@ class TradeAssistant:
             remark=remark if remark is not None else None,
         )
 
-    def buy(self, operation, execution_cycle, target_market_price, amount, remark=None):
+    def buy(self, operation, execution_cycle, target_market_price, amount, remark=None, order_type="limit"):
         if self.trade_type == "simulate":
             self.simulate(execution_cycle, operation, target_market_price, amount)
             return
 
         self.msg = operation if remark is None else remark
         self.show_moment(target_market_price, amount)
-        client_order_id, timestamp_ms = self.geniusTrader.buy_order(amount=amount, price=target_market_price)
+        client_order_id, timestamp_ms = self.geniusTrader.buy_order(amount=amount, price=target_market_price,
+                                                                    order_type=order_type)
 
         # 添加一条新记录
         self.sqlManager.add_trade_record(
@@ -180,6 +182,7 @@ def slip(now_price):
         return 0.01
     return now_price / 1000
 
+
 from utils.url_center import redis_url
 
 
@@ -203,6 +206,4 @@ def load_index(target_stock):
     down_Dochian_price = float(decoded_data['history_min_price'])
     ATR = float(decoded_data['ATR'])
 
-
     return up_Dochian_price, down_Dochian_price, ATR, last_time
-

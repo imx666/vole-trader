@@ -247,14 +247,18 @@ class GeniusTrader:
             self.LOGGING.info(item['最小下单数量'])
             self.LOGGING.info("\n")
 
-    def buy_order(self, amount, price=None):
+    def buy_order(self, amount, price=None, order_type="limit"):
         """买入"""
         self.LOGGING.info("\n")
 
-        order_type = "limit"
+        # order_type = "limit"
         tgtCcy = ""
         if price is None:
             order_type = "market"
+            tgtCcy = "base_ccy"
+
+        if order_type == "market":
+            price = None
             tgtCcy = "base_ccy"
 
         timestamp_seconds = time.time()
@@ -287,13 +291,16 @@ class GeniusTrader:
 
         return client_order_id, timestamp_ms
 
-    def sell_order(self, amount, price=None):
+    def sell_order(self, amount, price=None, order_type="limit"):
         """卖出"""
         self.LOGGING.info("\n")
 
-        order_type = "limit"
+        # order_type = "limit"
         if price is None:
             order_type = "market"
+
+        if order_type == "market":
+            price = None
 
         timestamp_seconds = time.time()
         timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
