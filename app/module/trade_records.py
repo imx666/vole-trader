@@ -116,16 +116,29 @@ class TradeRecordManager:
         return f"{self.strategy}-{sort_name}-{today}_{new_number:04d}"
 
     @refresh_cache
-    def last_execution_cycle(self, strategy_name):
+    def last_execution_cycle(self):
         """获取最后的的 execution_cycle 编号"""
-        last_record = self.session.query(TradeRecord).filter(
-            TradeRecord.execution_cycle.like(f'{strategy_name}%')
-        ).order_by(TradeRecord.create_time.desc()).first()
+        # last_record = self.session.query(TradeRecord).filter(
+        #     TradeRecord.execution_cycle.like(f'{strategy_name}%')
+        # ).order_by(TradeRecord.create_time.desc()).first()
+
+        last_record = self.session.query(TradeRecord).filter_by(strategy=self.strategy).filter_by(
+            target_stock=self.target_stock).order_by(
+            TradeRecord.create_time.desc()).first()
         if last_record:
             name = last_record.execution_cycle
-            # print(name)
             return name
-        return None
+        raise Exception(f"生成新编号错误")
+
+    @refresh_cache
+    def get_trade_record(self, execution_cycle):
+        """获取指定ID的交易记录"""
+        trade_record = self.session.query(TradeRecord).filter_by(execution_cycle=execution_cycle).order_by(
+            TradeRecord.create_time.desc()).first()
+
+        if trade_record:
+            return to_dict(trade_record)
+        raise Exception(f"No trade record found with id: {execution_cycle}")
 
     @refresh_cache
     def filter_record(self, state, new_stock=None):
@@ -146,6 +159,57 @@ class TradeRecordManager:
             record_list.append(record.client_order_id)
 
         return record_list
+
+    @refresh_cache
+    def add_trade_record(self, **kwargs):
+        """添加一条新的交易记录"""
+        trade_record = TradeRecord(
+            execution_cycle=kwargs.get('execution_cycle'),
+            target_stock=self.target_stock,
+            operation=kwargs.get('operation'),
+            # state=kwargs.get('state'),  # 默认为live
+            create_time=kwargs.get('create_time'),
+            fill_time=kwargs.get('fill_time'),
+            client_order_id=kwargs.get('client_order_id'),
+            price=kwargs.get('price'),
+            amount=kwargs.get('amount'),
+            value=kwargs.get('value'),
+            fee=kwargs.get('fee'),
+            strategy=self.strategy,
+            remark=kwargs.get('remark'),
+        )
+        self.session.add(trade_record)
+        self.session.commit()
+        print(f"Added trade record: {trade_record}")
+        return trade_record
+
+    @refresh_cache
+    def update_trade_record(self, trade_id, **kwargs):
+        """更新指定ID的交易记录"""
+        trade_record = self.session.query(TradeRecord).filter_by(client_order_id=trade_id).first()
+        if trade_record:
+            for key, value in kwargs.items():
+                if hasattr(trade_record, key):
+                    setattr(trade_record, key, value)
+            self.session.commit()
+            print(f"Updated trade record: {trade_record}")
+            return trade_record
+        else:
+            print(f"No trade record found with id: {trade_id}")
+            return None
+
+    @refresh_cache
+    def delete_trade_record(self, trade_id):
+        """删除指定ID的交易记录"""
+        trade_record = self.session.query(TradeRecord).filter_by(id=trade_id).first()
+        if trade_record:
+            self.session.delete(trade_record)
+            self.session.commit()
+            print(f"Deleted trade record with id: {trade_id}")
+            return True
+        else:
+            print(f"No trade record found with id: {trade_id}")
+            return False
 
     @refresh_cache
     def get(self, execution_cycle, op):
@@ -285,18 +349,6 @@ class TradeRecordManager:
             else:
                 raise Exception(f"trade_record实例不存在: {op}")
 
-        # if op == 'execution_state':
-        #     filtered_records = (
-        #         self.session.query(TradeRecord)
-        #         .filter(TradeRecord.target_stock == self.target_stock)
-        #         .filter(TradeRecord.execution_cycle == execution_cycle)
-        #         .all()
-        #     )
-        #     for record in filtered_records:
-        #         if record.operation == 'close' and record.state == 'filled':
-        #             return "completed", record.client_order_id
-        #     return "running", 0
-
         if op == 'balance_delta':
             total_value = 0
             filtered_records = (
@@ -312,7 +364,7 @@ class TradeRecordManager:
                 if (operation == 'reduce' or operation == 'close') and record.state == 'filled':
                     total_value += record.value
 
-            return total_value
+            return round(total_value, 4)
 
         if op == 'delta':
             flag = 0
@@ -339,71 +391,9 @@ class TradeRecordManager:
             if flag == 0:
                 raise Exception(f"trade_record: 此执行编号未存在close操作，无法计算delta, profit_rate")
 
-            delta = receive_value - spend_value
+            delta = round(receive_value - spend_value, 4)
             profit_rate = delta / spend_value
             return delta, profit_rate
-
-    @refresh_cache
-    def add_trade_record(self, **kwargs):
-        """添加一条新的交易记录"""
-        trade_record = TradeRecord(
-            execution_cycle=kwargs.get('execution_cycle'),
-            target_stock=self.target_stock,
-            operation=kwargs.get('operation'),
-            # state=kwargs.get('state'),  # 默认为live
-            create_time=kwargs.get('create_time'),
-            fill_time=kwargs.get('fill_time'),
-            client_order_id=kwargs.get('client_order_id'),
-            price=kwargs.get('price'),
-            amount=kwargs.get('amount'),
-            value=kwargs.get('value'),
-            fee=kwargs.get('fee'),
-            strategy=self.strategy,
-            remark=kwargs.get('remark'),
-        )
-        self.session.add(trade_record)
-        self.session.commit()
-        print(f"Added trade record: {trade_record}")
-        return trade_record
-
-    @refresh_cache
-    def get_trade_record(self, execution_cycle):
-        """获取指定ID的交易记录"""
-        trade_record = self.session.query(TradeRecord).filter_by(execution_cycle=execution_cycle).order_by(
-            TradeRecord.create_time.desc()).first()
-
-        if trade_record:
-            return to_dict(trade_record)
-        else:
-            print(f"No trade record found with id: {execution_cycle}")
-            return None
-
-    @refresh_cache
-    def update_trade_record(self, trade_id, **kwargs):
-        """更新指定ID的交易记录"""
-        trade_record = self.session.query(TradeRecord).filter_by(client_order_id=trade_id).first()
-        if trade_record:
-            for key, value in kwargs.items():
-                if hasattr(trade_record, key):
-                    setattr(trade_record, key, value)
-            self.session.commit()
-            print(f"Updated trade record: {trade_record}")
-            return trade_record
-        else:
-            print(f"No trade record found with id: {trade_id}")
-            return None
-
-    def delete_trade_record(self, trade_id):
-        """删除指定ID的交易记录"""
-        trade_record = self.session.query(TradeRecord).filter_by(id=trade_id).first()
-        if trade_record:
-            self.session.delete(trade_record)
-            self.session.commit()
-            print(f"Deleted trade record with id: {trade_id}")
-            return True
-        else:
-            print(f"No trade record found with id: {trade_id}")
-            return False
 
 
 def to_dict(instance):
@@ -412,9 +402,7 @@ def to_dict(instance):
     return {key: value for key, value in instance.__dict__.items() if not key.startswith('_')}
 
 
-
 if __name__ == "__main__":
-    strategy_name = 'sb'
     strategy_name = 'TURTLE'
     client_order_id = 'OMI12345'
 
