@@ -32,7 +32,7 @@ LOGGING = logging.getLogger("app_01")
 
 from MsgSender.wx_msg import send_wx_info
 from utils.url_center import redis_url_fastest
-from module.genius_trading import GeniusTrader
+from module.super_okx import GeniusTrader
 from module.trade_records import TradeRecordManager
 
 

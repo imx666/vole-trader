@@ -14,7 +14,7 @@ LOGGING = logging.getLogger("auto_upload_index")
 
 import redis
 
-from module.genius_trading import GeniusTrader
+from module.super_okx import GeniusTrader
 from utils.url_center import redis_url
 from module.common_index import get_DochianChannel, get_ATR
 

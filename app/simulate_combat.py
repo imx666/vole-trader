@@ -7,7 +7,7 @@ from utils.logging_config import Logging_dict
 logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("app_01")
 
-from module.genius_trading import beijing_time
+from module.super_okx import beijing_time
 
 
 # import redis

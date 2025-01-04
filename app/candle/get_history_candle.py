@@ -21,7 +21,7 @@ if __name__ == '__main__':
     load_dotenv(dotenv_path)  # 载入环境变量
     BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-    from module.genius_trading import GeniusTrader
+    from module.super_okx import GeniusTrader
     from utils.files import find_or_create_doc
 
     # target_stock = "LUNC-USDT"

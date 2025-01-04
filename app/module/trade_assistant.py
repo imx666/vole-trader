@@ -2,7 +2,7 @@ from datetime import datetime
 import time
 import redis
 
-from module.genius_trading import GeniusTrader
+from module.super_okx import GeniusTrader
 from module.trade_records import TradeRecordManager
 
 # 交易api
