@@ -105,6 +105,7 @@ class HoldInfo:
             self.remove(key)
 
 
+
 def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     LOGGING.info(f"\n")
     LOGGING.info(f"检查更新状态: {hold_stock}")
@@ -121,8 +122,8 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
         return
 
     # 查询未成交订单并取消
-    sqlManager = TradeRecordManager(hold_stock, strategy_name=strategy_name)
-    # sqlManager.target_stock = hold_stock
+    # sqlManager = TradeRecordManager(hold_stock, strategy_name=strategy_name)
+    sqlManager.target_stock = hold_stock
     # sqlManager.new_stock(hold_stock)
     record_list_1 = sqlManager.filter_record(state="live", new_stock=hold_stock)
     record_list_2 = sqlManager.filter_record(state="partially_filled", new_stock=hold_stock)
@@ -185,13 +186,13 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     LOGGING.info(new_info)
 
     # 如果此编号的状态是已完成，周期结束后，遇到close的情况下
-    execution_state, client_order_id = sqlManager.get(execution_cycle, "execution_state")
-    if execution_state == "completed":
+    # execution_state, client_order_id = sqlManager.get(execution_cycle, "execution_state")
+    trade_record = sqlManager.get_trade_record(execution_cycle)
+
+    if trade_record["operation"] == 'close' and trade_record["state"] == 'filled':
         LOGGING.info("平仓已经完成，重置redis信息")
-        hold_info.remove('add_price_list(ideal)')
-        hold_info.remove('reduce_price_list(ideal)')
-        hold_info.remove('close_price(ideal)')
-        hold_info.remove('build_price(ideal)')
+        hold_info.reset_all()
+        client_order_id = trade_record["client_order_id"]
 
         # 对这一轮进行评估
         delta, profit_rate = sqlManager.get(execution_cycle, "delta")  # 虽然需要传编号，但是计算价差是用不着的
@@ -285,13 +286,16 @@ origin_int_list = [
     "sell_times",
 ]
 
+
 origin_reset_list = [
     "add_price_list(ideal)",
     "reduce_price_list(ideal)",
+    "close_price(ideal)",
+    "build_price(ideal)",
 ]
 
 strategy_name = "TURTLE"
-# sqlManager = TradeRecordManager("sb", strategy_name=strategy_name)
+sqlManager = TradeRecordManager("sb", strategy_name=strategy_name)
 
 
 if __name__ == '__main__':
