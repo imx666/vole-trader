@@ -37,11 +37,21 @@ from module.trade_records import TradeRecordManager
 
 
 class HoldInfo:
-    def __init__(self, target_stock, LOGGING=None):
+    def __init__(self, target_stock=None, LOGGING=None):
         self.target_stock = target_stock
         self.LOGGING = LOGGING
         self.redis_okx = redis.Redis.from_url(redis_url_fastest)
         self.decoded_data = {}
+        self.price_dict = {}
+        self.DayStamp = None
+        self.auth_time = 0
+
+        if target_stock:
+            self.newest_all()
+
+    # @target_stock.setter
+    def new_stock(self, new_stock):
+        self.target_stock = new_stock
         self.newest_all()
 
     def newest(self, op):
@@ -105,13 +115,48 @@ class HoldInfo:
             self.remove(key)
 
 
+def search_and_update(result, client_order_id, withdraw_order):
+    # 查询执行结果
+    deal_data = result['data'][0]
+    price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
+    state = deal_data["state"]
+    price = float(price_str)
+    amount = float(deal_data["sz"])
+    value = amount * price
+    fee = float(deal_data["fee"])
+    side = deal_data["side"]
+    if side == "buy":
+        amount = amount + fee  # fee的值是负数，所以用+
+        fee = -fee * price  # 买入时，手续费是按照标的物计算的
+    if side == "sell":
+        value = value + fee
+        fee = -fee
+
+    # 买入时的总价value是包括手续费的，卖出时的总价是剔除手续费的
+    if state == "filled" or state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
+        fill_time = int(deal_data["fillTime"])
+        sqlManager.update_trade_record(
+            client_order_id,
+            state=state,
+            price=price,
+            amount=amount,
+            value=value,
+            fill_time=datetime.fromtimestamp(fill_time / 1000.0),
+            fee=fee,
+        )
+    if state == "canceled":
+        sqlManager.update_trade_record(client_order_id, state="canceled")
+    if withdraw_order and state == "live":
+        geniusTrader.cancel_order(client_order_id=client_order_id)
+        sqlManager.update_trade_record(client_order_id, state="canceled")
 
 def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     LOGGING.info(f"\n")
     LOGGING.info(f"检查更新状态: {hold_stock}")
 
     # 持仓信息
-    hold_info = HoldInfo(hold_stock, LOGGING)
+    hold_info.LOGGING = LOGGING
+    hold_info.new_stock(hold_stock)
 
     # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
@@ -122,56 +167,22 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
         return
 
     # 查询未成交订单并取消
-    # sqlManager = TradeRecordManager(hold_stock, strategy_name=strategy_name)
     sqlManager.target_stock = hold_stock
-    # sqlManager.new_stock(hold_stock)
+    geniusTrader.LOGGING = LOGGING
     record_list_1 = sqlManager.filter_record(state="live", new_stock=hold_stock)
     record_list_2 = sqlManager.filter_record(state="partially_filled", new_stock=hold_stock)
     record_list = record_list_1 + record_list_2
     if not record_list:
-        LOGGING.info("无live和part订单,跳过同步")
+        LOGGING.info(f"{execution_cycle}: 无live和part订单,跳过同步")
         return
     LOGGING.info(f"live和part订单数目: {len(record_list)}")
 
     time.sleep(3)  # 给予极端部分成交的情况充足的时间，因为部分成交也会触发这个函数
-    geniusTrader = GeniusTrader(hold_stock, LOGGING=LOGGING)
     for client_order_id in record_list:
-        # 查询执行结果
+        # 查询执行结果/撤单
         result = geniusTrader.execution_result(client_order_id=client_order_id)
         LOGGING.info(f"订单详情: {result}")
-
-        deal_data = result['data'][0]
-        price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
-        state = deal_data["state"]
-        price = float(price_str)
-        amount = float(deal_data["sz"])
-        value = amount * price
-        fee = float(deal_data["fee"])
-        side = deal_data["side"]
-        if side == "buy":
-            amount = amount + fee  # fee的值是负数，所以用+
-            fee = -fee * price  # 买入时，手续费是按照标的物计算的
-        if side == "sell":
-            value = value + fee
-            fee = -fee
-
-        # 买入时的总价value是包括手续费的，卖出时的总价是剔除手续费的
-        if state == "filled" or state == "partially_filled":  # 已成交,但是部分成交怎么办啊啊啊！！！！！
-            fill_time = int(deal_data["fillTime"])
-            sqlManager.update_trade_record(
-                client_order_id,
-                state=state,
-                price=price,
-                amount=amount,
-                value=value,
-                fill_time=datetime.fromtimestamp(fill_time / 1000.0),
-                fee=fee,
-            )
-        if state == "canceled":
-            sqlManager.update_trade_record(client_order_id, state="canceled")
-        if withdraw_order and state == "live":
-            geniusTrader.cancel_order(client_order_id=client_order_id)
-            sqlManager.update_trade_record(client_order_id, state="canceled")
+        search_and_update(result, client_order_id, withdraw_order)
 
     long_position = sqlManager.get(execution_cycle, "long_position")
     sell_times = sqlManager.get(execution_cycle, "sell_times")
@@ -186,9 +197,7 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     LOGGING.info(new_info)
 
     # 如果此编号的状态是已完成，周期结束后，遇到close的情况下
-    # execution_state, client_order_id = sqlManager.get(execution_cycle, "execution_state")
     trade_record = sqlManager.get_trade_record(execution_cycle)
-
     if trade_record["operation"] == 'close' and trade_record["state"] == 'filled':
         LOGGING.info("平仓已经完成，重置redis信息")
         hold_info.reset_all()
@@ -212,7 +221,8 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
             'sell_times': 0,
             '<init_balance>': init_balance,
         }
-    hold_info.pull_dict(new_info)
+
+        hold_info.pull_dict(new_info)
 
 
 def show_account(result):
@@ -296,7 +306,9 @@ origin_reset_list = [
 
 strategy_name = "TURTLE"
 sqlManager = TradeRecordManager("sb", strategy_name=strategy_name)
+hold_info = HoldInfo()
 
+geniusTrader = GeniusTrader("sb")
 
 if __name__ == '__main__':
     hold_stock = "FLOKI-USDT"
