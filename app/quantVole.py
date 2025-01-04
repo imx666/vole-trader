@@ -1,14 +1,17 @@
 import sys
 import time
 import redis
-from datetime import datetime, timezone, timedelta
+from utils.url_center import redis_url
 
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
-from utils.url_center import redis_url
+
+# from module.trade_assistant import *
 from module.trade_records import TradeRecordManager
-from monitor.account_monitor import HoldInfo, check_state
-from module.trade_assistant import TradeAssistant, get_real_time_info, slip, load_index
+from module.trade_assistant import hold_info
+from module.trade_assistant import TradeAssistant
+from module.trade_assistant import timed_task, get_real_time_info
+from module.trade_assistant import compute_amount, compute_sb_price, trade_auth, slip, check_state
 
 # 第一个参数是脚本名称，后续的是传入的参数
 if len(sys.argv) > 1:
@@ -30,191 +33,30 @@ LOGGING = logging.getLogger(f"quantVole-{sort_name}")
 redis_okx = redis.Redis.from_url(redis_url)
 last_read_time = redis_okx.hget(f"common_index:{target_stock}", 'last_read_time')
 DayStamp = last_read_time.decode() if last_read_time is not None else None
+hold_info.DayStamp = DayStamp
 
 # 持仓信息
-hold_info = HoldInfo(target_stock, LOGGING=LOGGING)
+hold_info.LOGGING = LOGGING
+hold_info.new_stock(target_stock)
 execution_cycle = hold_info.get("execution_cycle")
+
+# sbb()
+# time.sleep(123456)
+
 
 # 交易助手
 agent = TradeAssistant('TURTLE', target_stock, trade_type="actual", LOGGING=LOGGING)
-
-# # 数据库记录
-# sqlManager = TradeRecordManager(target_stock, "TURTLE")
-
-auth_time = 0
-price_dict = {}
-
-
-def trade_auth(side):
-    global auth_time
-    auth_time += 1
-    tradeFlag = hold_info.newest("tradeFlag")
-
-    sqlManager = TradeRecordManager(target_stock, "TURTLE")
-
-    record_list_1 = sqlManager.filter_record(state="live")
-    record_list_2 = sqlManager.filter_record(state="partially_filled")
-    record_list = record_list_1 + record_list_2
-    if record_list:
-        if auth_time == 1:
-            LOGGING.warning(f"<{side}>: no access to trade,数据库中仍然有挂单未同步")
-        return False
-
-    if tradeFlag == "all-auth":
-        LOGGING.info(f"<{side}>: trade approved")
-        return True
-
-    if tradeFlag == "buy-only" and side == "buy":
-        LOGGING.info(f"<{side}>: trade approved")
-        return True
-
-    if tradeFlag == "sell-only" and side == "sell":
-        LOGGING.info(f"<{side}>: trade approved")
-        return True
-
-    if tradeFlag == "no-auth":
-        if auth_time == 1:
-            LOGGING.warning(f"<{side}>: no access to trade")
-        return False
-
-    if auth_time == 1:
-        LOGGING.warning(f"<{side}>: no access to trade")
-    return False
 
 
 def notice_change(long_position, sell_times):
     if long_position != hold_info.get("long_position") or sell_times != hold_info.get("sell_times"):
         LOGGING.info("持仓发生变化,立即拉取redis")
-        # load_index_and_compute_price(target_stock)
-        compute_sb_price(target_stock)
-
-
-def compute_amount(operation, target_market_price):
-    amount = round(hold_info.get("<risk_rate>") * hold_info.get("<init_balance>") / hold_info.get("ATR"), 8)
-    if operation == "build":
-        max_rate, min_rate = 0.331, 0.251
-    else:
-        max_rate, min_rate = 0.311, 0.231
-
-    expect_max_cost = hold_info.get("<init_balance>") * max_rate
-    expect_min_cost = hold_info.get("<init_balance>") * min_rate
-    now_cost = amount * target_market_price
-    if now_cost > expect_max_cost:
-        LOGGING.info("超预算(减少数量)")
-        amount = expect_max_cost / target_market_price
-    if expect_min_cost > now_cost:
-        LOGGING.info("未达预算(增加数量)")
-        amount = expect_min_cost / target_market_price
-
-    return amount
-
-
-def compute_sb_price(target_stock):
-    up_Dochian_price, down_Dochian_price, ATR, last_time = load_index(target_stock)
-    LOGGING.info(f"开始更新参数, 上次更新时间: {last_time}")
-    LOGGING.info(ATR)
-    LOGGING.info(up_Dochian_price)
-    LOGGING.info(down_Dochian_price)
-
-    global price_dict
-    LOGGING.info("计算目标价")
-    sqlManager = TradeRecordManager(target_stock, "TURTLE")
-
-    execution_cycle = hold_info.newest("execution_cycle")
-    long_position = hold_info.newest("long_position")
-    build_price = sqlManager.get(execution_cycle, "build_price")
-    total_max_value = sqlManager.get(execution_cycle, "total_max_value")
-    total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
-    hold_average_price = total_max_value / total_max_amount if total_max_amount > 0 else build_price
-
-    LOGGING.info(f"多头持仓: {long_position}")
-    if long_position > 0:
-        LOGGING.info(f"建仓价: {build_price}")
-        LOGGING.info(f"持仓均价: {hold_average_price}")
-
-    # 成本平仓价
-    stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
-
-    if stop_loss_price > down_Dochian_price:
-        close_price = stop_loss_price
-        close_type = "-0.5N线"
-    else:
-        close_price = down_Dochian_price
-        close_type = "唐奇安下线"
-
-    price_dict_2_redis = {
-        'ATR': ATR,
-        '平仓价(-0.5N线)': '未建仓' if long_position == 0 else stop_loss_price,
-        'close_price(ideal)': close_price,
-    }
-
-    price_dict = {
-        'ATR': ATR,
-        'close_price(ideal)': close_price,
-        'close_type': close_type,
-    }
-
-    if long_position == 0:
-        price_dict_2_redis['build_price(ideal)'] = up_Dochian_price
-        price_dict['build_price(ideal)'] = up_Dochian_price
-        LOGGING.info(f"理想建仓价: {up_Dochian_price}")
-
-    if long_position > 0:
-        add_price_list = []
-        reduce_price_list = []
-
-        for i in range(1, hold_info.get("<max_long_position>")):
-            target_market_price = round(build_price + i * 0.5 * ATR, 10)
-            add_price_list.append(target_market_price)
-
-        for i in range(0, hold_info.get("<max_sell_times>")):
-            target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
-            reduce_price_list.append(target_market_price)
-
-        price_dict_2_redis['add_price_list(ideal)'] = str(add_price_list)
-        price_dict_2_redis['reduce_price_list(ideal)'] = str(reduce_price_list)
-        price_dict['add_price_list(ideal)'] = add_price_list
-        price_dict['reduce_price_list(ideal)'] = reduce_price_list
-
-    hold_info.pull_dict(price_dict_2_redis)
-    LOGGING.info(price_dict)
-    LOGGING.info(f"持续跟踪价格中...")
-
-
-def timed_task():
-    bj_tz = timezone(timedelta(hours=8))
-    now_bj = datetime.now().astimezone(bj_tz)
-    # today = now_bj.day  # 当前月份的第几天
-    hour_of_day = now_bj.hour  # 第几时
-    minute = now_bj.minute  # 第几分
-
-    if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
-        # if hour_of_day in [1, 4, 8, 12, 16, 20, 13] and minute == 1:
-        global DayStamp, auth_time
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-        if DayStamp is not None and current_time == DayStamp:
-            return
-
-        DayStamp = current_time
-        redis_okx = redis.Redis.from_url(redis_url)
-        redis_okx.hset(f"common_index:{target_stock}", 'last_read_time', current_time)
-        LOGGING.info(f"到点了: {current_time} ")
-        auth_time = 0
-
-        # 取消未成交的挂单
-        check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
-
-        # 开放交易权限
-        hold_info.pull("tradeFlag", "all-auth")
-
-        # load_index_and_compute_price(target_stock)
         compute_sb_price(target_stock)
 
 
 def circle():
-    global execution_cycle, price_dict
+    global execution_cycle
     # 计算目标价
-    # load_index_and_compute_price(target_stock)
     compute_sb_price(target_stock)
 
     try:
@@ -241,6 +83,8 @@ def circle():
 
             # 更新策略参数
             notice_change(long_position, sell_times)
+
+            price_dict = hold_info.price_dict
 
             # 空仓时
             if long_position == 0:
@@ -269,6 +113,7 @@ def circle():
                 if target_market_price < now_price - slip(now_price):
                     if not trade_auth("buy"):
                         continue
+
                     # 买入
                     amount = compute_amount("add", target_market_price)
                     agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")

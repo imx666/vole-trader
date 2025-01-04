@@ -1,35 +1,44 @@
-from datetime import datetime
 import time
 import redis
+from datetime import datetime, timezone, timedelta
 
 from module.super_okx import GeniusTrader
 from module.trade_records import TradeRecordManager
 
+from utils.url_center import redis_url
+from utils.url_center import redis_url_fastest
+from utils.LOGGING_2 import LOGGING_2
+from monitor.account_monitor import HoldInfo, check_state
+
+hold_info = HoldInfo()
+redis_fastest = redis.Redis.from_url(redis_url_fastest)
+
 # 交易api
-geniusTrader = GeniusTrader("Assistant")
+geniusTrader = GeniusTrader()
 
 # 数据库记录
-sqlManager = TradeRecordManager("Assistant")
+sqlManager = TradeRecordManager()
 
+origin_str_list = [
+    "execution_cycle",
+    "update_time(24时制)",
+]
 
-# sqlManager = TradeRecordManager("TURTLE")
+origin_int_list = [
+    "update_time",
+    "long_position",
+    "max_sell_times",
+    "sell_times",
+]
 
-class LOGGING_2:
-    @staticmethod
-    def info(message):
-        print(message)
-
-    @staticmethod
-    def error(message):
-        print(message)
+latest_update_time = time.time()
 
 
 class TradeAssistant:
-    # def __init__(self, sqlManager, geniusTrader, trade_type):
     def __init__(self, strategy_name, target_stock, trade_type, LOGGING=None):
         global geniusTrader, sqlManager
-        sqlManager.strategy = strategy_name
         sqlManager.target_stock = target_stock
+        sqlManager.strategy = strategy_name
         geniusTrader.target_stock = target_stock
 
         self.geniusTrader = geniusTrader
@@ -49,8 +58,6 @@ class TradeAssistant:
     def show_moment(self, target_market_price, amount):
         if self.msg is not None:
             self.LOGGING.info(f"remark: {self.msg}")
-        # probable_price = (self.buyLmt + self.sellLmt) / 2
-        # self.LOGGING.info(f"现价(可能): {round(probable_price, 6)}")
         self.LOGGING.info(f"现价: {self.now_price}")
         self.LOGGING.info(f"目标价: {target_market_price}, 数量: {amount}")
         # self.LOGGING.info(f"买限: {self.buyLmt}, 卖限: {self.sellLmt}")
@@ -123,24 +130,6 @@ class TradeAssistant:
         )
 
 
-from utils.url_center import redis_url_fastest
-
-redis_fastest = redis.Redis.from_url(redis_url_fastest)
-origin_str_list = [
-    "execution_cycle",
-    "update_time(24时制)",
-]
-
-origin_int_list = [
-    "update_time",
-    "long_position",
-    "max_sell_times",
-    "sell_times",
-]
-
-latest_update_time = time.time()
-
-
 def get_real_time_info(target_stock, LOGGING):
     global latest_update_time
     timestamp_seconds = time.time()
@@ -183,9 +172,6 @@ def slip(now_price):
     return now_price / 1000
 
 
-from utils.url_center import redis_url
-
-
 def load_index(target_stock):
     # 获取单个字段的值
     redis_okx = redis.Redis.from_url(redis_url)
@@ -207,3 +193,176 @@ def load_index(target_stock):
     ATR = float(decoded_data['ATR'])
 
     return up_Dochian_price, down_Dochian_price, ATR, last_time
+
+
+def compute_amount(operation, target_market_price):
+    LOGGING = hold_info.LOGGING
+    amount = round(hold_info.get("<risk_rate>") * hold_info.get("<init_balance>") / hold_info.get("ATR"), 8)
+    if operation == "build":
+        max_rate, min_rate = 0.331, 0.251
+    else:
+        max_rate, min_rate = 0.311, 0.231
+
+    expect_max_cost = hold_info.get("<init_balance>") * max_rate
+    expect_min_cost = hold_info.get("<init_balance>") * min_rate
+    now_cost = amount * target_market_price
+    if now_cost > expect_max_cost:
+        LOGGING.info("超预算(减少数量)")
+        amount = expect_max_cost / target_market_price
+    if expect_min_cost > now_cost:
+        LOGGING.info("未达预算(增加数量)")
+        amount = expect_min_cost / target_market_price
+
+    return amount
+
+
+def compute_sb_price(target_stock):
+    LOGGING = hold_info.LOGGING
+
+    up_Dochian_price, down_Dochian_price, ATR, last_time = load_index(target_stock)
+    LOGGING.info(f"开始更新参数, 上次更新时间: {last_time}")
+    LOGGING.info(ATR)
+    LOGGING.info(up_Dochian_price)
+    LOGGING.info(down_Dochian_price)
+
+    global price_dict
+    LOGGING.info("计算目标价")
+    long_position = hold_info.newest("long_position")
+    execution_cycle = hold_info.newest("execution_cycle")
+
+    # sqlManager = TradeRecordManager(target_stock, "TURTLE")
+    build_price = sqlManager.get(execution_cycle, "build_price")
+    total_max_value = sqlManager.get(execution_cycle, "total_max_value")
+    total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
+    hold_average_price = total_max_value / total_max_amount if total_max_amount > 0 else build_price
+
+    LOGGING.info(f"多头持仓: {long_position}")
+    if long_position > 0:
+        LOGGING.info(f"建仓价: {build_price}")
+        LOGGING.info(f"持仓均价: {hold_average_price}")
+
+    # 成本平仓价
+    stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
+
+    if stop_loss_price > down_Dochian_price:
+        close_price = stop_loss_price
+        close_type = "-0.5N线"
+    else:
+        close_price = down_Dochian_price
+        close_type = "唐奇安下线"
+
+    price_dict_2_redis = {
+        'ATR': ATR,
+        '平仓价(-0.5N线)': '未建仓' if long_position == 0 else stop_loss_price,
+        'close_price(ideal)': close_price,
+    }
+
+    price_dict = {
+        'ATR': ATR,
+        'close_price(ideal)': close_price,
+        'close_type': close_type,
+    }
+
+    if long_position == 0:
+        price_dict_2_redis['build_price(ideal)'] = up_Dochian_price
+        price_dict['build_price(ideal)'] = up_Dochian_price
+        LOGGING.info(f"理想建仓价: {up_Dochian_price}")
+
+    if long_position > 0:
+        add_price_list = []
+        reduce_price_list = []
+
+        for i in range(1, hold_info.get("<max_long_position>")):
+            target_market_price = round(build_price + i * 0.5 * ATR, 10)
+            add_price_list.append(target_market_price)
+
+        for i in range(0, hold_info.get("<max_sell_times>")):
+            target_market_price = round(build_price + (0.5 * i + 2) * ATR, 10)
+            reduce_price_list.append(target_market_price)
+
+        price_dict_2_redis['add_price_list(ideal)'] = str(add_price_list)
+        price_dict_2_redis['reduce_price_list(ideal)'] = str(reduce_price_list)
+        price_dict['add_price_list(ideal)'] = add_price_list
+        price_dict['reduce_price_list(ideal)'] = reduce_price_list
+
+    hold_info.pull_dict(price_dict_2_redis)
+    LOGGING.info(price_dict)
+    hold_info.price_dict = price_dict
+    LOGGING.info(f"持续跟踪价格中...")
+
+
+def trade_auth(side):
+    LOGGING = hold_info.LOGGING
+    auth_time = hold_info.auth_time
+
+    hold_info.auth_time = auth_time + 1
+    tradeFlag = hold_info.newest("tradeFlag")
+
+    # 虽然redis中有pending order这一参数，但是极端情况是redis还未来得及更新，然后就重复挂单
+    record_list_1 = sqlManager.filter_record(state="live")
+    record_list_2 = sqlManager.filter_record(state="partially_filled")
+    record_list = record_list_1 + record_list_2
+    if record_list:
+        if auth_time == 1:
+            LOGGING.warning(f"<{side}>: no access to trade,数据库中仍然有挂单未同步")
+        return False
+
+    if tradeFlag == "all-auth":
+        LOGGING.info(f"<{side}>: trade approved")
+        return True
+
+    if tradeFlag == "buy-only" and side == "buy":
+        LOGGING.info(f"<{side}>: trade approved")
+        return True
+
+    if tradeFlag == "sell-only" and side == "sell":
+        LOGGING.info(f"<{side}>: trade approved")
+        return True
+
+    if tradeFlag == "no-auth":
+        if auth_time == 1:
+            LOGGING.warning(f"<{side}>: no access to trade ({tradeFlag})")
+        return False
+
+    if auth_time == 1:
+        LOGGING.warning(f"<{side}>: no access to trade ({tradeFlag})")
+    return False
+
+
+def timed_task():
+    bj_tz = timezone(timedelta(hours=8))
+    now_bj = datetime.now().astimezone(bj_tz)
+    # today = now_bj.day  # 当前月份的第几天
+    hour_of_day = now_bj.hour  # 第几时
+    minute = now_bj.minute  # 第几分
+
+    if hour_of_day in [0, 4, 8, 12, 16, 20] and minute == 2:
+        # if hour_of_day in [1, 4, 8, 12, 16, 20, 13] and minute == 1:
+        target_stock = hold_info.target_stock
+        DayStamp = hold_info.DayStamp
+
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        if DayStamp is not None and current_time == DayStamp:
+            return
+
+        LOGGING = hold_info.LOGGING
+        hold_info.DayStamp = current_time
+        redis_okx = redis.Redis.from_url(redis_url)
+        hold_info.auth_time = 0
+        redis_okx.hset(f"common_index:{target_stock}", 'last_read_time', current_time)
+        LOGGING.info(f"到点了: {current_time} ")
+
+        # 取消未成交的挂单
+        check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
+
+        # 开放交易权限
+        hold_info.pull("tradeFlag", "all-auth")
+
+        compute_sb_price(target_stock)
+
+
+def sbb():
+    LOGGING = hold_info.LOGGING
+    target_stock = hold_info.target_stock
+    LOGGING.info("超预算(减少数量)123456")
+    LOGGING.info(target_stock)
