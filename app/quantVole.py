@@ -38,6 +38,8 @@ hold_info.DayStamp = DayStamp
 # 持仓信息
 hold_info.LOGGING = LOGGING
 hold_info.new_stock(target_stock)
+
+# 拉取执行编号
 execution_cycle = hold_info.get("execution_cycle")
 
 # sbb()
@@ -54,8 +56,64 @@ def notice_change(long_position, sell_times):
         compute_sb_price(target_stock)
 
 
+def build_house(target_market_price):
+    # 生成新编号
+    global execution_cycle
+    sqlManager = TradeRecordManager(target_stock, "TURTLE")
+    execution_cycle = sqlManager.generate_execution_cycle()
+
+    # 买入
+    amount = compute_amount("build", target_market_price)
+    agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
+    new_info = {
+        "pending_order": 1,
+        "execution_cycle": execution_cycle,  # 同步新编号
+        "tradeFlag": "buy-only"
+    }
+    hold_info.pull_dict(new_info)
+
+
+def add_house(target_market_price):
+    amount = compute_amount("add", target_market_price)
+    agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
+    hold_info.pull("pending_order", 1)
+
+
+def decrease_house(target_market_price, sell_times, order_type="limit"):
+    ratio = 0.3 if sell_times <= 1 else 0.2
+    operation = "reduce"
+    if sell_times == hold_info.get("<max_sell_times>") - 1:  # 不能是完全的多头满的状态来
+        ratio = 1
+        operation = "close"
+
+    if order_type == "market":
+        msg = f"减仓<市价>(+{0.5 * sell_times + 2}N线, 分批止盈)"
+    else:
+        msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
+
+    agent.sell(operation, execution_cycle, target_market_price, ratio, remark=msg, order_type=order_type)
+    new_info = {
+        "pending_order": 1,
+        "tradeFlag": "sell-only"  # 不能给no-auth，任何时候都得保证最后的平仓可以顺利进行
+    }
+    hold_info.pull_dict(new_info)
+
+
+def close_house(close_price):
+    price_dict = hold_info.price_dict
+    msg = price_dict["close_type"]
+    ratio = 1
+    agent.sell("close", execution_cycle, close_price, ratio, remark=msg)
+    new_info = {
+        "pending_order": 1,
+        "tradeFlag": "no-auth"
+    }
+    hold_info.pull_dict(new_info)
+
+
 def circle():
     global execution_cycle
+
     # 计算目标价
     compute_sb_price(target_stock)
 
@@ -72,7 +130,7 @@ def circle():
                 continue
 
             # 获取最新报价
-            data_dict = get_real_time_info(target_stock, LOGGING)
+            data_dict = get_real_time_info(target_stock)
             if data_dict is None:
                 time.sleep(0.01)
                 continue
@@ -92,19 +150,9 @@ def circle():
                 if target_market_price < now_price - slip(now_price):
                     if not trade_auth("buy"):
                         continue
-                    # 生成新编号
-                    sqlManager = TradeRecordManager(target_stock, "TURTLE")
-                    execution_cycle = sqlManager.generate_execution_cycle()
 
-                    # 买入
-                    amount = compute_amount("build", target_market_price)
-                    agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
-                    new_info = {
-                        "pending_order": 1,
-                        "execution_cycle": execution_cycle,  # 同步新编号
-                        "tradeFlag": "buy-only"
-                    }
-                    hold_info.pull_dict(new_info)
+                    # 建仓
+                    build_house(target_market_price)
                     continue
 
             # 未满仓,加仓
@@ -115,9 +163,7 @@ def circle():
                         continue
 
                     # 买入
-                    amount = compute_amount("add", target_market_price)
-                    agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
-                    hold_info.pull("pending_order", 1)
+                    add_house(target_market_price)
                     continue
 
             # 卖出 ============= SELL =========SELL===========SELL===================== SELL
@@ -133,14 +179,7 @@ def circle():
                     check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
 
                     # 卖出
-                    msg = price_dict["close_type"]
-                    ratio = 1
-                    agent.sell("close", execution_cycle, close_price, ratio, remark=msg)
-                    new_info = {
-                        "pending_order": 1,
-                        "tradeFlag": "no-auth"
-                    }
-                    hold_info.pull_dict(new_info)
+                    close_house(close_price)
                     continue
 
             # 满仓情况,逐步卖出
@@ -151,38 +190,16 @@ def circle():
                     if not trade_auth("sell"):
                         continue
 
-                    # 卖出
-                    msg = f"减仓(+{0.5 * sell_times + 2}N线, 分批止盈)"
-                    ratio = 0.3 if sell_times <= 1 else 0.2
-                    operation = "reduce"
-                    if sell_times == hold_info.get("<max_sell_times>") - 1:  # 不能是完全的多头满的状态来
-                        ratio = 1
-                        operation = "close"
-                    agent.sell(operation, execution_cycle, target_market_price, ratio, remark=msg)
-                    new_info = {
-                        "pending_order": 1,
-                        "tradeFlag": "sell-only"  # 不能给no-auth，任何时候都得保证最后的平仓可以顺利进行
-                    }
-                    hold_info.pull_dict(new_info)
+                    # 限价卖出
+                    decrease_house(target_market_price, sell_times)
                     continue
 
                 if now_price > target_market_price:
                     if not trade_auth("sell"):
                         continue
 
-                    # 卖出
-                    msg = f"减仓<市价>(+{0.5 * sell_times + 2}N线, 分批止盈)"
-                    ratio = 0.3 if sell_times <= 1 else 0.2
-                    operation = "reduce"
-                    if sell_times == hold_info.get("<max_sell_times>") - 1:  # 不能是完全的多头满的状态来
-                        ratio = 1
-                        operation = "close"
-                    agent.sell(operation, execution_cycle, target_market_price, ratio, remark=msg, order_type="market")
-                    new_info = {
-                        "pending_order": 1,
-                        "tradeFlag": "sell-only"  # 不能给no-auth，任何时候都得保证最后的平仓可以顺利进行
-                    }
-                    hold_info.pull_dict(new_info)
+                    # 市价卖出
+                    decrease_house(target_market_price, sell_times, order_type="market")
                     continue
 
     except Exception as e:
