@@ -90,17 +90,15 @@ def refresh_cache(method):
 
 
 class TradeRecordManager:
-    def __init__(self, target_stock, strategy_name=None):
+    def __init__(self, target_stock=None, strategy_name=None):
         self.session = Session()
         self.target_stock = target_stock
         self.strategy = strategy_name
 
-    # def new_stock(self, new_stock):
-    #     self.target_stock = new_stock
-
     def __del__(self):
         self.session.close()
 
+    @refresh_cache
     def generate_execution_cycle(self):
         """生成唯一的 execution_cycle 编号"""
         sort_name = self.target_stock.split('-')[0]
@@ -117,6 +115,7 @@ class TradeRecordManager:
 
         return f"{self.strategy}-{sort_name}-{today}_{new_number:04d}"
 
+    @refresh_cache
     def last_execution_cycle(self, strategy_name):
         """获取最后的的 execution_cycle 编号"""
         last_record = self.session.query(TradeRecord).filter(
