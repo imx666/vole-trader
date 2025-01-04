@@ -40,6 +40,13 @@ def update_chain():
         except Exception as e:
             LOGGING.error(e)
 
+# def update_chain222():
+#     for hold_stock in target_stock_li:
+#         try:
+#             check_state(hold_stock, withdraw_order=True, LOGGING=LOGGING)
+#         except Exception as e:
+#             LOGGING.error(e)
+
 
 if __name__ == "__main__":
     update_chain()
@@ -48,6 +55,11 @@ if __name__ == "__main__":
     schedule.every(60).seconds.do(update_chain)
 
     LOGGING.info("定时任务启动, 每60秒执行一次任务\n")
+
+    # # 每天的特定小时执行任务
+    # hours_to_run = [0, 4, 8, 12, 16, 20]  # 23点是为了清空当天的尾巴信息
+    # for hour in hours_to_run:
+    #     schedule.every().day.at(f"{hour:02}:02").do(update_chain222)
 
     # 执行定时任务的主循环
     try:
