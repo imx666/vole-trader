@@ -305,10 +305,9 @@ origin_reset_list = [
 ]
 
 strategy_name = "TURTLE"
-sqlManager = TradeRecordManager("sb", strategy_name=strategy_name)
+sqlManager = TradeRecordManager(strategy_name=strategy_name)
 hold_info = HoldInfo()
-
-geniusTrader = GeniusTrader("sb")
+geniusTrader = GeniusTrader()
 
 if __name__ == '__main__':
     hold_stock = "FLOKI-USDT"
