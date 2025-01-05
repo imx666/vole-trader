@@ -75,6 +75,7 @@ def update_real_time_info(now_price, trading_volume):
 
 async def main():
     reconnect_attempts = 0
+    cankao_data = None
     while True:
         try:
             async with websockets.connect('wss://ws.okx.com:8443/ws/v5/public') as websocket:
@@ -87,8 +88,8 @@ async def main():
                 # 持续监听增量数据
                 while True:
                     try:
-                        response = await asyncio.wait_for(websocket.recv(), timeout=25)
-
+                        response = await asyncio.wait_for(websocket.recv(), timeout=5)
+                        cankao_data = response
                         data_dict = json.loads(response)
                         now_price = float(data_dict["data"][0]["px"])
                         trading_volume = float(data_dict["data"][0]["sz"])
@@ -98,13 +99,13 @@ async def main():
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
                             await websocket.send('ping')
-                            await websocket.recv()
-                            # res = await websocket.recv()
-                            # LOGGING.info(f"收到: {res}")
+                            # await websocket.recv()
+                            res = await websocket.recv()
+                            LOGGING.warning(f"{target_stock}收到: {res}")
                             continue
 
                         except Exception as e:
-                            LOGGING.info(f"连接关闭，正在重连…… {e}")
+                            LOGGING.error(f"{target_stock}连接关闭，正在重连…… {e}")
                             break
 
         # 重新尝试连接，使用指数退避策略
@@ -132,7 +133,7 @@ async def main():
             continue
 
         except Exception as e:
-            LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}')
+            LOGGING.info(f'连接断开，不重新连接，请检查……其他: {e}....{cankao_data}')
             if "Timeout reading from socket" in str(e):
                 LOGGING.info("Timeout , and reconnecting")
                 time.sleep(10)
