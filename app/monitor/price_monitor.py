@@ -90,6 +90,8 @@ async def main():
                     try:
                         response = await asyncio.wait_for(websocket.recv(), timeout=5)
                         cankao_data = response
+                        if cankao_data == "pong":
+                            continue
                         data_dict = json.loads(response)
                         now_price = float(data_dict["data"][0]["px"])
                         trading_volume = float(data_dict["data"][0]["sz"])
@@ -99,9 +101,9 @@ async def main():
                     except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed) as e:
                         try:
                             await websocket.send('ping')
-                            # await websocket.recv()
-                            res = await websocket.recv()
-                            LOGGING.warning(f"{target_stock}收到: {res}")
+                            await websocket.recv()
+                            # res = await websocket.recv()
+                            # LOGGING.warning(f"{target_stock}收到: {res}")
                             continue
 
                         except Exception as e:
