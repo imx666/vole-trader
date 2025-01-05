@@ -49,14 +49,12 @@ class HoldInfo:
         if target_stock:
             self.newest_all()
 
-    # @target_stock.setter
     def new_stock(self, new_stock):
         self.target_stock = new_stock
         self.newest_all()
 
     def newest(self, op):
         target_op = self.redis_okx.hget(f"hold_info:{self.target_stock}", op)
-        # return target_op.decode() if target_op is not None else None
         if target_op is None:
             raise Exception(f"HoldInfo: redis: 键'{op}'不存在")
 
@@ -68,7 +66,6 @@ class HoldInfo:
             return int(target_value)
         else:
             return float(target_value)
-        # return float(target_op.decode()) if target_op is not None else None
 
     def get(self, key):
         target_value = self.decoded_data.get(key, None)
@@ -115,8 +112,33 @@ class HoldInfo:
             self.remove(key)
 
 
+def final_and_reset(trade_record):
+    hold_info.reset_all()
+    client_order_id = trade_record["client_order_id"]
+
+    # 对这一轮进行评估
+    delta, profit_rate = sqlManager.get(execution_cycle, "delta")  # 虽然需要传编号，但是计算价差是用不着的
+    init_balance = hold_info.get("<init_balance>") + delta
+    sqlManager.update_trade_record(
+        client_order_id,
+        delta=delta,
+        profit_rate=profit_rate,
+    )
+
+    # 重置余额
+    new_info = {
+        'execution_cycle': "ready",  # 重置编码
+        'pending_order': 0,
+        'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
+        'long_position': 0,
+        'sell_times': 0,
+        '<init_balance>': init_balance,
+    }
+
+    hold_info.pull_dict(new_info)
+
+
 def search_and_update(result, client_order_id, withdraw_order):
-    # 查询执行结果
     deal_data = result['data'][0]
     price_str = deal_data["fillPx"] if deal_data["ordType"] == "market" else deal_data["px"]
     state = deal_data["state"]
@@ -146,53 +168,51 @@ def search_and_update(result, client_order_id, withdraw_order):
         )
     if state == "canceled":
         sqlManager.update_trade_record(client_order_id, state="canceled")
+        return
+
     if withdraw_order and state == "live":
         geniusTrader.cancel_order(client_order_id=client_order_id)
         sqlManager.update_trade_record(client_order_id, state="canceled")
 
-def check_state(hold_stock, withdraw_order=False, LOGGING=None):
-    LOGGING.info(f"\n")
-    LOGGING.info(f"检查更新状态: {hold_stock}")
 
+def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     # 持仓信息
     hold_info.LOGGING = LOGGING
     hold_info.new_stock(hold_stock)
+    LOGGING.info(f"\n")
+    LOGGING.info(f"检查更新状态: {hold_stock}")
 
     # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
 
     # ready情况下不用更新
     if execution_cycle == "ready":
-        LOGGING.info("未生成执行编号,跳过同步")
+        LOGGING.info("未生成执行编号")
         return
 
     # 查询未成交订单并取消
     sqlManager.target_stock = hold_stock
     geniusTrader.LOGGING = LOGGING
-    record_list_1 = sqlManager.filter_record(state="live", new_stock=hold_stock)
-    record_list_2 = sqlManager.filter_record(state="partially_filled", new_stock=hold_stock)
-    record_list = record_list_1 + record_list_2
+    record_list = sqlManager.filter_record(state="live") + sqlManager.filter_record(state="partially_filled")
     if not record_list:
-        LOGGING.info(f"{execution_cycle}: 无live和part订单,跳过同步")
+        LOGGING.info(f"{execution_cycle}: 无live和part订单")
         return
+
     LOGGING.info(f"live和part订单数目: {len(record_list)}")
 
-    time.sleep(3)  # 给予极端部分成交的情况充足的时间，因为部分成交也会触发这个函数
+    # 查询并同步执行结果/撤单
+    time.sleep(2)  # 给予极端部分成交的情况充足的时间，因为部分成交也会触发这个函数
     for client_order_id in record_list:
-        # 查询执行结果/撤单
         result = geniusTrader.execution_result(client_order_id=client_order_id)
         LOGGING.info(f"订单详情: {result}")
         search_and_update(result, client_order_id, withdraw_order)
 
-    long_position = sqlManager.get(execution_cycle, "long_position")
-    sell_times = sqlManager.get(execution_cycle, "sell_times")
-
-    # 查询未成交订单
-    record_list = sqlManager.filter_record(state="live")
+    # 同步hold_info
+    pending_order = sqlManager.filter_record(state="live")
     new_info = {
-        "pending_order": 1 if record_list else 0,
-        "long_position": long_position,
-        "sell_times": sell_times
+        "pending_order": 1 if pending_order else 0,
+        "long_position": sqlManager.get(execution_cycle, "long_position"),
+        "sell_times": sqlManager.get(execution_cycle, "sell_times")
     }
     LOGGING.info(new_info)
 
@@ -200,29 +220,10 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     trade_record = sqlManager.get_trade_record(execution_cycle)
     if trade_record["operation"] == 'close' and trade_record["state"] == 'filled':
         LOGGING.info("平仓已经完成，重置redis信息")
-        hold_info.reset_all()
-        client_order_id = trade_record["client_order_id"]
+        final_and_reset(trade_record)
+        return
 
-        # 对这一轮进行评估
-        delta, profit_rate = sqlManager.get(execution_cycle, "delta")  # 虽然需要传编号，但是计算价差是用不着的
-        init_balance = hold_info.get("<init_balance>") + delta
-        sqlManager.update_trade_record(
-            client_order_id,
-            delta=delta,
-            profit_rate=profit_rate,
-        )
-
-        # 重置余额
-        new_info = {
-            'execution_cycle': "ready",  # 重置编码
-            'pending_order': 0,
-            'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
-            'long_position': 0,
-            'sell_times': 0,
-            '<init_balance>': init_balance,
-        }
-
-        hold_info.pull_dict(new_info)
+    hold_info.pull_dict(new_info)
 
 
 def show_account(result):
@@ -295,7 +296,6 @@ origin_int_list = [
     "<max_sell_times>",
     "sell_times",
 ]
-
 
 origin_reset_list = [
     "add_price_list(ideal)",
