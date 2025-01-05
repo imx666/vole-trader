@@ -291,41 +291,122 @@ def compute_sb_price(target_stock):
     LOGGING.info(f"持续跟踪价格中...")
 
 
-def trade_auth(side):
-    LOGGING = hold_info.LOGGING
-    auth_time = hold_info.auth_time
+trade_auth_warning = None
 
-    hold_info.auth_time = auth_time + 1
+
+# def trade_auth(side=None, reset=False):
+#     global trade_auth_warning
+#
+#     # 重置输出标志位
+#     if reset:
+#         trade_auth_warning = None
+#         return
+#
+#     LOGGING = hold_info.LOGGING
+#
+#     tradeFlag = hold_info.newest("tradeFlag")
+#
+#     # 虽然redis中有pending order这一参数，但是极端情况是redis还未来得及更新，然后就重复挂单
+#     record_list_1 = sqlManager.filter_record(state="live")
+#     record_list_2 = sqlManager.filter_record(state="partially_filled")
+#     record_list = record_list_1 + record_list_2
+#     if record_list:
+#         msg = f"<{side}>: no access to trade, 数据库中仍然有挂单未同步"
+#         if msg != trade_auth_warning:
+#             LOGGING.warning(msg)
+#             trade_auth_warning = msg
+#         return False
+#
+#     if tradeFlag != "build" and side == "close":
+#         LOGGING.info(f"<{side}>: trade approved")
+#         return True
+#
+#     if tradeFlag == "all-auth":
+#         LOGGING.info(f"<{side}>: trade approved")
+#         return True
+#
+#     if tradeFlag == "buy-only" and side == "buy":
+#         LOGGING.info(f"<{side}>: trade approved")
+#         return True
+#
+#     if tradeFlag == "sell-only" and side == "sell":
+#         LOGGING.info(f"<{side}>: trade approved")
+#         return True
+#
+#     if tradeFlag == "no-auth":
+#         msg = f"<{side}>: no access to trade ({tradeFlag})"
+#         if msg != trade_auth_warning:
+#             LOGGING.warning(msg)
+#             trade_auth_warning = msg
+#         return False
+#
+#     msg = f"<{side}>: no access to trade ({tradeFlag})"
+#     if msg != trade_auth_warning:
+#         LOGGING.warning(msg)
+#         trade_auth_warning = msg
+#     return False
+
+
+def trade_auth(side=None, reset=False):
+    """
+    检查是否有权限进行交易。
+
+    :param side: str，交易方向 ("buy", "sell", "close")。
+    :param reset: bool，是否重置警告标志位。
+    :return: bool，是否有权限交易。
+    """
+    global trade_auth_warning
+    LOGGING = hold_info.LOGGING
+
+    # 重置输出标志位
+    if reset:
+        trade_auth_warning = None
+        return
+
     tradeFlag = hold_info.newest("tradeFlag")
 
-    # 虽然redis中有pending order这一参数，但是极端情况是redis还未来得及更新，然后就重复挂单
-    record_list_1 = sqlManager.filter_record(state="live")
-    record_list_2 = sqlManager.filter_record(state="partially_filled")
-    record_list = record_list_1 + record_list_2
-    if record_list:
-        if auth_time == 1:
-            LOGGING.warning(f"<{side}>: no access to trade,数据库中仍然有挂单未同步")
-        return False
-
-    if tradeFlag == "all-auth":
+    if tradeFlag != "build" and side == "close":
         LOGGING.info(f"<{side}>: trade approved")
         return True
 
-    if tradeFlag == "buy-only" and side == "buy":
+    # 检查是否有未同步的挂单
+    pending_orders = sqlManager.filter_record(state="live") + sqlManager.filter_record(state="partially_filled")
+    if pending_orders:
+        return _log_warning(f"<{side}>: no access to trade, 数据库中仍然有挂单未同步")
+
+    # 定义交易权限规则
+    trade_rules = {
+        "all-auth": lambda s: True,
+        "no-auth": lambda s: False,
+        "build": lambda s: s == "buy",
+        "buy-only": lambda s: s == "buy",
+        "sell-only": lambda s: s == "sell",
+    }
+
+    # 检查权限规则
+    is_authorized = trade_rules.get(tradeFlag, lambda s: False)(side)
+    if is_authorized:
         LOGGING.info(f"<{side}>: trade approved")
         return True
 
-    if tradeFlag == "sell-only" and side == "sell":
-        LOGGING.info(f"<{side}>: trade approved")
-        return True
+    # 未授权的情况
+    return _log_warning(f"<{side}>: no access to trade ({tradeFlag})")
 
-    if tradeFlag == "no-auth":
-        if auth_time == 1:
-            LOGGING.warning(f"<{side}>: no access to trade ({tradeFlag})")
-        return False
 
-    if auth_time == 1:
-        LOGGING.warning(f"<{side}>: no access to trade ({tradeFlag})")
+def _log_warning(msg):
+    """
+    日志记录工具函数，避免重复记录。
+
+    :param msg: str，警告信息。
+    :param logger: logging.Logger，日志记录器。
+    :return: bool，总是返回 False。
+    """
+    LOGGING = hold_info.LOGGING
+
+    global trade_auth_warning
+    if msg != trade_auth_warning:
+        LOGGING.warning(msg)
+        trade_auth_warning = msg
     return False
 
 
@@ -348,9 +429,11 @@ def timed_task():
         LOGGING = hold_info.LOGGING
         hold_info.DayStamp = current_time
         redis_okx = redis.Redis.from_url(redis_url)
-        hold_info.auth_time = 0
         redis_okx.hset(f"common_index:{target_stock}", 'last_read_time', current_time)
         LOGGING.info(f"到点了: {current_time} ")
+
+        # 重置trade_auth输出权限
+        trade_auth(reset=True)
 
         # 取消未成交的挂单
         check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
