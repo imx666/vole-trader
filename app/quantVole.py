@@ -68,7 +68,7 @@ def build_house(target_market_price):
     new_info = {
         "pending_order": 1,
         "execution_cycle": execution_cycle,  # 同步新编号
-        "tradeFlag": "buy-only"
+        "tradeFlag": "build"
     }
     hold_info.pull_dict(new_info)
 
@@ -77,6 +77,11 @@ def add_house(target_market_price):
     amount = compute_amount("add", target_market_price)
     agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
     hold_info.pull("pending_order", 1)
+    new_info = {
+        "pending_order": 1,
+        "tradeFlag": "buy-only"
+    }
+    hold_info.pull_dict(new_info)
 
 
 def decrease_house(target_market_price, sell_times, order_type="limit"):
@@ -147,7 +152,7 @@ def circle():
             # 空仓时
             if long_position == 0:
                 target_market_price = price_dict['build_price(ideal)']
-                if target_market_price < now_price - slip(now_price):
+                if target_market_price - slip(now_price) < now_price:
                     if not trade_auth("buy"):
                         continue
 
@@ -158,7 +163,7 @@ def circle():
             # 未满仓,加仓
             if 0 < long_position < hold_info.get("<max_long_position>"):
                 target_market_price = price_dict['add_price_list(ideal)'][long_position - 1]
-                if target_market_price < now_price - slip(now_price):
+                if target_market_price - slip(now_price) < now_price:
                     if not trade_auth("buy"):
                         continue
 
@@ -171,8 +176,8 @@ def circle():
             if long_position > 0:  # 有持仓的情况下，判断完止损后再跳
                 # 止损
                 close_price = price_dict["close_price(ideal)"]
-                if now_price < close_price:
-                    if not trade_auth("sell"):
+                if now_price < close_price + slip(now_price):
+                    if not trade_auth("close"):
                         continue
 
                     # 取消所有挂单，并平仓
