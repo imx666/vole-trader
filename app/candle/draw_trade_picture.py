@@ -11,12 +11,13 @@ from matplotlib.lines import Line2D
 
 period = "1D"
 period = "4H"
-# period = "1H"
+period = "15m"
 
 compensate_dict = {
     "1D": 1,
     "4H": 1 / 6,
     "1H": 1 / 24,
+    "15m": 1 / 96,
 }
 
 compensate = compensate_dict.get(period, 1)
@@ -140,9 +141,9 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     )
 
     # 在指定的位置绘制卖出点
-    plt.scatter(buy_df['timestamp'], buy_df['value'], color='blue', label='Buy Points', s=5)
+    plt.scatter(buy_df['timestamp'], buy_df['value'], color='blue', label='Buy Points', s=13)
     plt.scatter(sell_df['timestamp'], sell_df['value'], color='yellow', label='Sell Points', s=7.5)
-    plt.scatter(sell_empty_df['timestamp'], sell_empty_df['value'], color='orange', label='Sell empty Points', s=10)
+    plt.scatter(sell_empty_df['timestamp'], sell_empty_df['value'], color='orange', label='Sell empty Points', s=13)
 
     # 设置日期格式
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
@@ -255,7 +256,10 @@ if __name__ == '__main__':
 
     BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
     # total_path = os.path.join(BASE_DIR, f"./data/保留4H单位的/{target_stock}.json")
     # draw_picture(target_stock, buy_days, sell_days, sell_empty_days)
-    draw_picture_K(total_path, target_stock, end_day=100)
+    # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
+    total_path = os.path.join(BASE_DIR, f"./data/15m/{target_stock}.json")
+
+    end_day = 100*10000
+    draw_picture_K(total_path, target_stock, end_day=end_day)
