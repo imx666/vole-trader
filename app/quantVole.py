@@ -56,7 +56,7 @@ def notice_change(long_position, sell_times):
         compute_sb_price(target_stock)
 
 
-def build_house(target_market_price):
+def build_house(target_market_price, order_type="limit"):
     # 生成新编号
     global execution_cycle
     sqlManager = TradeRecordManager(target_stock, "TURTLE")
@@ -64,7 +64,7 @@ def build_house(target_market_price):
 
     # 买入
     amount = compute_amount("build", target_market_price)
-    agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓")
+    agent.buy("build", execution_cycle, target_market_price, amount, remark="建仓", order_type=order_type)
     new_info = {
         "pending_order": 1,
         "execution_cycle": execution_cycle,  # 同步新编号
@@ -73,9 +73,9 @@ def build_house(target_market_price):
     hold_info.pull_dict(new_info)
 
 
-def add_house(target_market_price):
+def add_house(target_market_price, order_type="limit"):
     amount = compute_amount("add", target_market_price)
-    agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓")
+    agent.buy("add", execution_cycle, target_market_price, amount, remark="加仓", order_type=order_type)
     hold_info.pull("pending_order", 1)
     new_info = {
         "pending_order": 1,
@@ -104,11 +104,11 @@ def decrease_house(target_market_price, sell_times, order_type="limit"):
     hold_info.pull_dict(new_info)
 
 
-def close_house(close_price):
+def close_house(close_price, order_type="limit"):
     price_dict = hold_info.price_dict
     msg = price_dict["close_type"]
     ratio = 1
-    agent.sell("close", execution_cycle, close_price, ratio, remark=msg)
+    agent.sell("close", execution_cycle, close_price, ratio, remark=msg, order_type=order_type)
     new_info = {
         "pending_order": 1,
         "tradeFlag": "no-auth"
@@ -184,7 +184,8 @@ def circle():
                     check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
 
                     # 卖出
-                    close_house(close_price)
+                    # close_house(close_price)
+                    close_house(close_price, order_type="market")
                     continue
 
             # 满仓情况,逐步卖出
