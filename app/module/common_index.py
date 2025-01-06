@@ -59,3 +59,61 @@ def get_ATR(total_candle, PERIOD):
     # print(last_value)
 
     return last_value
+
+
+def Amplitude(total_candle, side):
+    if side == 'up':
+        li = []
+        total_li = []
+        continue_up = 0
+        for today_candle in total_candle:
+            open_price = float(today_candle[1])
+            close_price = float(today_candle[4])
+            rate = close_price / open_price
+            total_li.append(rate)
+            if rate > 1:
+                continue_up += 1
+                li.append(rate)
+        # print("total_li", total_li)
+        if continue_up == 0:
+            return False, li
+
+        if continue_up == len(total_candle):
+            return True, li
+
+        if continue_up == len(total_candle) - 1:
+            for item in li:
+                total_li.remove(item)
+            single = total_li[-1]
+            if single > 0.998:
+                # print("single", single)
+                return True, total_li
+
+        return False, li
+
+    if side == 'down':
+        continue_down = 0
+        for today_candle in total_candle:
+            open_price = float(today_candle[1])
+            close_price = float(today_candle[4])
+            rate = close_price / open_price
+            if rate < 1:
+                continue_down += 1
+        if continue_down == len(total_candle):
+            return True
+        return False
+
+
+if __name__ == '__main__':
+    pre_candle = [
+        ["1733968800000", "0.00013275", "0.00013364", "0.00013265", "0.00013334"],
+        ["1733969700000", "0.00013338", "0.00013466", "0.00013335", "0.00013462"],
+        ["1733970600000", "0.00013463", "0.00013637", "0.00013451", "0.00013607"],
+        ["1733971500000", "0.00013611", "0.00013744", "0.00013533", "0.00013733"],
+        ["1733972400000", "0.0001373", "0.00013815", "0.0001361", "0.0001371"],
+        ["1733973300000", "0.0001378", "0.00013885", "0.00013735", "0.00013877"],
+    ]
+    auth, li = Amplitude(pre_candle, "up")
+    if auth:
+        print("建仓")
+        print(li)
