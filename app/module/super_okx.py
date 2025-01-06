@@ -228,7 +228,8 @@ class GeniusTrader:
         data = result['data']
         total = []
         for item in data:
-            total.append(item[:5])
+            # total.append(item[:5])
+            total.append(item)
 
         return total
 
