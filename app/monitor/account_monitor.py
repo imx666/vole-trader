@@ -115,6 +115,7 @@ class HoldInfo:
 def final_and_reset(trade_record):
     hold_info.reset_all()
     client_order_id = trade_record["client_order_id"]
+    execution_cycle = trade_record["execution_cycle"]
 
     # 对这一轮进行评估
     delta, profit_rate = sqlManager.get(execution_cycle, "delta")  # 虽然需要传编号，但是计算价差是用不着的
