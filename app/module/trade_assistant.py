@@ -162,15 +162,30 @@ def get_real_time_info(target_stock):
 
 
 def slip(now_price):
-    if now_price > 1000:
-        return 1
-    if now_price > 100:
-        return 0.2
-    if now_price > 10:
-        return 0.1
-    if now_price > 1:
-        return 0.01
-    return now_price / 1000
+    if now_price >= 10000:
+        delta = 1
+    elif now_price >= 1000:
+        delta = 0.3
+    elif now_price >= 100:
+        delta = 0.1
+    elif now_price >= 1:
+        delta = 0.01
+    else:
+        delta = now_price / 1000
+
+        str_value = f"{delta:.10f}"  # 保留足够的小数位，避免浮点数精度问题
+        # 获取小数点的位置
+        decimal_index = str_value.find('.')
+
+        # 计算前导零的个数
+        if decimal_index != -1:
+            # 计算小数部分的长度
+            decimal_part = str_value[decimal_index + 1:]  # 获取小数部分
+            leading_zeros = len(decimal_part) - len(decimal_part.lstrip('0'))  # 计算前导零
+            delta = round(delta, leading_zeros + 1)
+            print(leading_zeros, delta)
+
+    return delta
 
 
 def load_index(target_stock):
