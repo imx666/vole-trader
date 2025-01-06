@@ -33,7 +33,7 @@ if __name__ == '__main__':
     from utils.files import find_or_create_doc
 
     target_stock = "BTC-USDT"
-    # target_stock = "LUNC-USDT"
+    target_stock = "LUNC-USDT"
     # target_stock = "ETH-USDT"
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
@@ -45,8 +45,6 @@ if __name__ == '__main__':
     # target_stock = "ZRX-USDT"
     # target_stock = "ZIL-USDT"
     # target_stock = "BOME-USDT"
-    # target_stock = "ASTR-USDT"  # 时间短
-    # target_stock = "GOAT-USDT"  # 时间短
     # target_stock = "ARKM-USDT"
     # target_stock = "ORDI-USDT"
     # target_stock = "ZRO-USDT"
@@ -95,4 +93,6 @@ if __name__ == '__main__':
     with open(total_path, 'r') as file:
         loaded_data = json.load(file)
     # print(loaded_data)
+
+    print(f"{target_stock} 写入完成")
 
