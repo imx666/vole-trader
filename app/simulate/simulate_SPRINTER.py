@@ -13,9 +13,10 @@ dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文�
 load_dotenv(dotenv_path)  # 载入环境变量
 
 from module.super_okx import beijing_time
-from module.common_index import get_ATR, Amplitude
+from module.common_index import get_ATR, Amplitude, compute_market_deal
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 # import redis
 
@@ -150,7 +151,6 @@ def execution_plan(target_stock, long_period_candle):
         today_candle = long_period_candle[day]
         today_timestamp = today_candle[0]
 
-
         # print(f"{day}, today: {beijing_time(today_timestamp)}")
         today_candle = [float(item) for item in today_candle]
         open_price = today_candle[1]
@@ -158,18 +158,27 @@ def execution_plan(target_stock, long_period_candle):
         today_min_price = today_candle[3]
 
         position = account_info.long_position
-        target_market_price = open_price
+        pre_pre_candle = long_period_candle[day - PERIOD_up * 2:day - PERIOD_up]
         pre_candle = long_period_candle[day - PERIOD_up:day]
+        target_market_price = open_price
         auth, li = Amplitude(pre_candle, "up")
         if auth and position == 0:
+            pre_pre = compute_market_deal(pre_pre_candle)
+            pre = compute_market_deal(pre_candle)
+            if pre/pre_pre < 0.5:
+                continue
+
             print(f"{day}, today: {beijing_time(today_timestamp)}")
             print("建仓")
-            print(li)
+            print(li, sum(li)-PERIOD_up)
             for i in li:
                 if i < 1:
-                    print("#"*50)
+                    print("#" * 50)
+
             buy_days.append([today_timestamp, target_market_price])
-            close_price = (target_market_price + float(pre_candle[0][1]))/2
+            # close_price = (target_market_price + float(pre_candle[0][1])) / 2
+            close_price = target_market_price*0.95
+            print(pre_pre, pre, pre / pre_pre)
 
             # amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
             # total_cost = amount * target_market_price
@@ -186,7 +195,7 @@ def execution_plan(target_stock, long_period_candle):
             #     amount = expect_min_cost / target_market_price
             #     total_cost = expect_min_cost
 
-            amount = round(account_info.init_balance * 0.2/target_market_price, 8)
+            amount = round(account_info.init_balance * 0.99 / target_market_price, 8)
             total_cost = amount * target_market_price
 
             print(f"amount: {amount}, price: {target_market_price}")
@@ -220,15 +229,15 @@ def execution_plan(target_stock, long_period_candle):
             print()
             continue
 
-        # position = account_info.long_position
-        # target_market_price = close_price
-        # if today_min_price < target_market_price < today_max_price and position > 0:
-        #     print(f"{day}, today: {beijing_time(today_timestamp)}")
-        #     print("平仓(半线)")
-        #     sell_empty_days.append([today_timestamp, target_market_price])
-        #     sell(account_info, target_market_price, today_timestamp=today_timestamp)
-        #     print()
-        #     continue
+        position = account_info.long_position
+        target_market_price = close_price
+        if today_min_price < target_market_price < today_max_price and position > 0:
+            print(f"{day}, today: {beijing_time(today_timestamp)}")
+            print("平仓(半线)")
+            sell_empty_days.append([today_timestamp, target_market_price])
+            sell(account_info, target_market_price, today_timestamp=today_timestamp)
+            print()
+            continue
 
         # position = account_info.long_position
         # if position > 0 and flag == 0:
@@ -244,7 +253,6 @@ def execution_plan(target_stock, long_period_candle):
 
     account_info.print_all_info()
 
-
     from candle.draw_trade_picture import draw_picture
 
     draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day,
@@ -252,8 +260,6 @@ def execution_plan(target_stock, long_period_candle):
 
 
 if __name__ == '__main__':
-
-
     PERIOD = 3
     PERIOD_up = 6
     PERIOD_down = 3
@@ -270,12 +276,21 @@ if __name__ == '__main__':
     target_stock = os.getenv("target_stock")
 
     # target_stock = "BTC-USDT"
-    target_stock = "LUNC-USDT"
+    # target_stock = "LUNC-USDT"
     # target_stock = "ETH-USDT"
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
     # target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
+
+    target_stock = "JST-USDT"
+    # target_stock = "ZRX-USDT"
+    # target_stock = "ZIL-USDT"
+    # target_stock = "BOME-USDT"  # 表现很不好
+    # target_stock = "ARKM-USDT"  # 表现很不好
+    # target_stock = "ORDI-USDT"  # 119
+    # target_stock = "ZRO-USDT"  # 124
+    # target_stock = "MEW-USDT"  # 116
 
     # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
     # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}-longtest.json")
