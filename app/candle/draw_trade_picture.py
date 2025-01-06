@@ -47,7 +47,8 @@ def draw_picture_K(total_path, target_stock, start_day=0, end_day=None):
     if end_day is not None:
         long_period_candle = long_period_candle[start_day:end_day]
 
-    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
+    # df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
+    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
     df.set_index('timestamp', inplace=True)
@@ -84,7 +85,8 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     if end_day is not None:
         long_period_candle = long_period_candle[start_day:end_day]
 
-    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
+    # df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
+    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
     df.set_index('timestamp', inplace=True)
