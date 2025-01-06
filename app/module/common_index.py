@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pandas as pd
 
 
@@ -61,6 +63,17 @@ def get_ATR(total_candle, PERIOD):
     return last_value
 
 
+def compute_market_deal(total_candle):
+    total_trade_usdt = 0
+    # total_trade_mount = 0
+
+    for today_candle in total_candle:
+        trade_usdt = float(today_candle[-3])
+        # trade_mount = float(today_candle[-4])
+        total_trade_usdt += trade_usdt
+    return total_trade_usdt
+
+
 def Amplitude(total_candle, side):
     if side == 'up':
         li = []
@@ -82,12 +95,13 @@ def Amplitude(total_candle, side):
             return True, li
 
         if continue_up == len(total_candle) - 1:
+            complete_li = deepcopy(total_li)
             for item in li:
                 total_li.remove(item)
             single = total_li[-1]
             if single > 0.998:
                 # print("single", single)
-                return True, total_li
+                return True, complete_li
 
         return False, li
 
