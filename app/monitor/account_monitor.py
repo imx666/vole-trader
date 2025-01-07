@@ -82,24 +82,31 @@ class HoldInfo:
     def remove(self, key):
         response = self.redis_okx.hdel(f"hold_info:{self.target_stock}", key)
         if response:
-            print("remove success")
+            self.LOGGING.info("键 移除成功")
         # else:
         #     raise Exception(f"HoldInfo: redis: {self.target_stock} remove '{key}' failed, 请检查键是否存在")
 
     def pull(self, key, value):
-        target_value = self.decoded_data.get(key, None)
+        try:
+            target_value = self.decoded_data.get(key, None)
 
-        # 一样的就不用上传
-        if target_value == value:
-            return
+            # 一样的就不用上传
+            if target_value == value:
+                return
 
-        self.redis_okx.hset(f"hold_info:{self.target_stock}", key, value)
-        self.newest_all()
+            self.redis_okx.hset(f"hold_info:{self.target_stock}", key, value)
+            self.newest_all()
+
+        except Exception as e:
+            raise Exception(f"信息同步redis失败: {e}")
 
     def pull_dict(self, target_dict):
-        self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
-        self.newest_all()
-        self.LOGGING.info("信息同步redis成功\n")
+        try:
+            self.redis_okx.hset(f"hold_info:{self.target_stock}", mapping=target_dict)
+            self.newest_all()
+            self.LOGGING.info("信息同步redis成功\n")
+        except Exception as e:
+            raise Exception(f"信息同步redis失败: {e}")
 
     def newest_all(self):
         all_info = self.redis_okx.hgetall(f"hold_info:{self.target_stock}")
