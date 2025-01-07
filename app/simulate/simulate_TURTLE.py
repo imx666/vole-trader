@@ -319,15 +319,14 @@ if __name__ == '__main__':
     UpDochianChannel = []
     DownDochianChannel = []
 
+    start_day = 0
+    end_day = 180*6
 
-    start_day = 180*6
+    start_day = 300*6
     end_day = -1
 
     # start_day = 0
-    # end_day = 180*6
-
-    start_day = 0
-    end_day = -1
+    # end_day = -1
 
     os.system("clear")
     target_stock = os.getenv("target_stock")
@@ -339,13 +338,13 @@ if __name__ == '__main__':
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
     # target_stock = "LUNC-USDT"
-    # target_stock = "PEPE-USDT"
+    target_stock = "PEPE-USDT"
     target_stock = "RACA-USDT"
 
     target_stock = "JST-USDT"
-    # target_stock = "ZRX-USDT"
-    # target_stock = "ZIL-USDT"
-    # target_stock = "ORDI-USDT"
+    target_stock = "ZRX-USDT"
+    target_stock = "ZIL-USDT"
+    target_stock = "ORDI-USDT"
     # target_stock = "BOME-USDT"  # 4H的时长不够
     # target_stock = "ARKM-USDT"  # 4H的时长不够
     # target_stock = "ZRO-USDT"  # 4H的时长不够
