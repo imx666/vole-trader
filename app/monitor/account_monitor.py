@@ -135,6 +135,8 @@ def final_and_reset(trade_record):
         'sell_times': 0,
         '<init_balance>': init_balance,
     }
+    hold_info.LOGGING = LOGGING
+    LOGGING.info(new_info)
 
     hold_info.pull_dict(new_info)
 
@@ -215,7 +217,6 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
         "long_position": sqlManager.get(execution_cycle, "long_position"),
         "sell_times": sqlManager.get(execution_cycle, "sell_times")
     }
-    LOGGING.info(new_info)
 
     # 如果此编号的状态是已完成，周期结束后，遇到close的情况下
     trade_record = sqlManager.get_trade_record(execution_cycle)
@@ -224,6 +225,7 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
         final_and_reset(trade_record)
         return
 
+    LOGGING.info(new_info)
     hold_info.pull_dict(new_info)
 
 
