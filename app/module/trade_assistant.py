@@ -309,59 +309,6 @@ def compute_sb_price(target_stock):
 trade_auth_warning = None
 
 
-# def trade_auth(side=None, reset=False):
-#     global trade_auth_warning
-#
-#     # 重置输出标志位
-#     if reset:
-#         trade_auth_warning = None
-#         return
-#
-#     LOGGING = hold_info.LOGGING
-#
-#     tradeFlag = hold_info.newest("tradeFlag")
-#
-#     # 虽然redis中有pending order这一参数，但是极端情况是redis还未来得及更新，然后就重复挂单
-#     record_list_1 = sqlManager.filter_record(state="live")
-#     record_list_2 = sqlManager.filter_record(state="partially_filled")
-#     record_list = record_list_1 + record_list_2
-#     if record_list:
-#         msg = f"<{side}>: no access to trade, 数据库中仍然有挂单未同步"
-#         if msg != trade_auth_warning:
-#             LOGGING.warning(msg)
-#             trade_auth_warning = msg
-#         return False
-#
-#     if tradeFlag != "build" and side == "close":
-#         LOGGING.info(f"<{side}>: trade approved")
-#         return True
-#
-#     if tradeFlag == "all-auth":
-#         LOGGING.info(f"<{side}>: trade approved")
-#         return True
-#
-#     if tradeFlag == "buy-only" and side == "buy":
-#         LOGGING.info(f"<{side}>: trade approved")
-#         return True
-#
-#     if tradeFlag == "sell-only" and side == "sell":
-#         LOGGING.info(f"<{side}>: trade approved")
-#         return True
-#
-#     if tradeFlag == "no-auth":
-#         msg = f"<{side}>: no access to trade ({tradeFlag})"
-#         if msg != trade_auth_warning:
-#             LOGGING.warning(msg)
-#             trade_auth_warning = msg
-#         return False
-#
-#     msg = f"<{side}>: no access to trade ({tradeFlag})"
-#     if msg != trade_auth_warning:
-#         LOGGING.warning(msg)
-#         trade_auth_warning = msg
-#     return False
-
-
 def trade_auth(side=None, reset=False):
     """
     检查是否有权限进行交易。
