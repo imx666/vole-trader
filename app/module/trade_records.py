@@ -296,7 +296,7 @@ class TradeRecordManager:
                 if operation == 'reduce' and record.state == 'filled':
                     total_amount -= record.amount
                 if operation == 'close' and record.state == 'filled':
-                    raise Exception(f"trade_record实例不存在: {op}")
+                    raise Exception(f"{execution_cycle} :trade_record实例不存在: {op}")
             return float(total_amount)
 
         if op == 'rest_value':
