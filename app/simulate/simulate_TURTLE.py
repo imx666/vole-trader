@@ -1,16 +1,21 @@
-# 导入日志配置
+import os
+import sys
 import json
-import logging.config
+from pathlib import Path
+from dotenv import load_dotenv
 
-from utils.logging_config import Logging_dict
+# 锁定系统运行路径
+project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
+dotenv_path = os.path.join(project_path, '../')
+sys.path.append(dotenv_path)
 
-logging.config.dictConfig(Logging_dict)
-LOGGING = logging.getLogger("app_01")
+dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
+load_dotenv(dotenv_path)  # 载入环境变量
 
 from module.super_okx import beijing_time
+from module.common_index import get_ATR, Amplitude, compute_market_deal, get_DochianChannel
 
-
-# import redis
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Account_info:
@@ -139,25 +144,30 @@ def execution_plan(target_stock, long_period_candle):
         pre_candle = long_period_candle[day - PERIOD:day]
         up_Dochian_price, down_Dochian_price = get_DochianChannel(pre_candle, PERIOD)
         ATR = get_ATR(pre_candle, PERIOD)
-        print(f"max: {up_Dochian_price}, \nmin: {down_Dochian_price}, \nATR: {ATR}")
+        # print(f"max: {up_Dochian_price}, \nmin: {down_Dochian_price}, \nATR: {ATR}")
 
-        # today_candle = long_period_candle[day][1:]  # 第一项是时间戳，要移除
-        # today_max_price = max(today_candle)
-        # today_min_price = min(today_candle)
         today_candle = long_period_candle[day]  # 第一项是时间戳，要移除
         today_timestamp = today_candle[0]
-        print(f"{day}, today: {beijing_time(today_timestamp)}")
+        # print(f"{day}, today: {beijing_time(today_timestamp)}")
+
         today_candle = [float(item) for item in today_candle]
         today_max_price = today_candle[2]
         today_min_price = today_candle[3]
-        print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
+        # print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
+
         UpDochianChannel.append([today_timestamp, up_Dochian_price])
         DownDochianChannel.append([today_timestamp, down_Dochian_price])
 
         position = account_info.long_position
         target_market_price = up_Dochian_price
+
+        print(f"max: {up_Dochian_price}, \nmin: {down_Dochian_price}, \nATR: {ATR}")
+        print(f"{day}, today: {beijing_time(today_timestamp)}")
+        print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
+
         if today_max_price > target_market_price and position == 0:
             print("建仓")
+
             flag = 1
             buy_days.append([today_timestamp, target_market_price])
 
@@ -301,20 +311,6 @@ def execution_plan(target_stock, long_period_candle):
 
 if __name__ == '__main__':
 
-    import os
-    from pathlib import Path
-    from dotenv import load_dotenv
-
-    project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-    dotenv_path = os.path.join(project_path, '../.env.dev')  # 指定.env.dev文件的路径
-    load_dotenv(dotenv_path)  # 载入环境变量
-    BASE_DIR = Path(__file__).resolve().parent.parent
-
-    # from module.genius_trading import GeniusTrader
-    from module.common_index import get_DochianChannel, get_ATR
-
-
-
     PERIOD = 3
     buy_days = []
     sell_days = []
@@ -323,36 +319,41 @@ if __name__ == '__main__':
     UpDochianChannel = []
     DownDochianChannel = []
 
-    start_day = 250
-    end_day = 1300
 
-    # start_day = 2700-240
-    # end_day = 2700
+    start_day = 180*6
+    end_day = -1
 
-    start_day = 2700-600
-    end_day = 2700
+    # start_day = 0
+    # end_day = 180*6
 
-    start_day = 2300-6*90
+    start_day = 0
     end_day = -1
 
     os.system("clear")
     target_stock = os.getenv("target_stock")
 
 
-
-    target_stock = "LUNC-USDT"
-    target_stock = "BTC-USDT"
-    target_stock = "ETH-USDT"
-    target_stock = "FLOKI-USDT"
-    target_stock = "OMI-USDT"  # 表现的太差了，应该增加持仓天数限制
-    target_stock = "DOGE-USDT"
+    # target_stock = "BTC-USDT"
+    # target_stock = "ETH-USDT"
+    # target_stock = "DOGE-USDT"
+    # target_stock = "FLOKI-USDT"
+    # target_stock = "OMI-USDT"
+    # target_stock = "LUNC-USDT"
     # target_stock = "PEPE-USDT"
+    target_stock = "RACA-USDT"
+
+    target_stock = "JST-USDT"
+    # target_stock = "ZRX-USDT"
+    # target_stock = "ZIL-USDT"
+    # target_stock = "ORDI-USDT"
+    # target_stock = "BOME-USDT"  # 4H的时长不够
+    # target_stock = "ARKM-USDT"  # 4H的时长不够
+    # target_stock = "ZRO-USDT"  # 4H的时长不够
+    # target_stock = "MEW-USDT"  # 4H的时长不够
 
 
-    total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
-    # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}-longtest.json")
+    total_path = os.path.join(BASE_DIR, f"../data/4H/{target_stock}.json")
 
-    # total_path = os.path.join(BASE_DIR, f"./data/1H/{target_stock}.json")
     with open(total_path, 'r') as file:
         long_period_candle = json.load(file)
         print(len(long_period_candle))
