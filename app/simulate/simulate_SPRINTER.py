@@ -165,19 +165,19 @@ def execution_plan(target_stock, long_period_candle):
         if auth and position == 0:
             pre_pre = compute_market_deal(pre_pre_candle)
             pre = compute_market_deal(pre_candle)
-            if pre/pre_pre < 0.5:
+            if pre / pre_pre < 0.5:
                 continue
 
-            print(f"{day}, today: {beijing_time(today_timestamp)}")
+            print(f"\n\n\n\n{day}, today: {beijing_time(today_timestamp)}")
             print("建仓")
-            print(li, sum(li)-PERIOD_up)
+            print(li, sum(li) - PERIOD_up)
             for i in li:
                 if i < 1:
                     print("#" * 50)
 
             buy_days.append([today_timestamp, target_market_price])
             # close_price = (target_market_price + float(pre_candle[0][1])) / 2
-            close_price = target_market_price*0.95
+            close_price = target_market_price * 0.95
             print(pre_pre, pre, pre / pre_pre)
 
             # amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
@@ -239,18 +239,6 @@ def execution_plan(target_stock, long_period_candle):
             print()
             continue
 
-        # position = account_info.long_position
-        # if position > 0 and flag == 0:
-        #     # 除数不为零
-        #     hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
-        #     target_market_price = round(hold_average_price - 0.5 * ATR, 10)
-        #     if today_min_price < target_market_price < today_max_price and position > 0:
-        #         print("平仓(唐奇安)")
-        #         sell_empty_days.append([today_timestamp, target_market_price])
-        #         sell(account_info, target_market_price, today_timestamp=today_timestamp)
-
-        # print()
-
     account_info.print_all_info()
 
     from candle.draw_trade_picture import draw_picture
@@ -283,9 +271,9 @@ if __name__ == '__main__':
     # target_stock = "DOGE-USDT"
     # target_stock = "PEPE-USDT"
 
-    target_stock = "JST-USDT"
-    # target_stock = "ZRX-USDT"
-    # target_stock = "ZIL-USDT"
+    target_stock = "JST-USDT"  # 117
+    target_stock = "ZRX-USDT"  # 95
+    target_stock = "ZIL-USDT"
     # target_stock = "BOME-USDT"  # 表现很不好
     # target_stock = "ARKM-USDT"  # 表现很不好
     # target_stock = "ORDI-USDT"  # 119
