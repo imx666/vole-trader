@@ -17,12 +17,15 @@ def get_DochianChannel(total_candle, PERIOD):
     # print(total_candle)
     for day_candle in part_candle:
         # print(day_candle)
-        float_candle = [float(item) for item in day_candle[1:]]
+        float_candle = [float(item) for item in day_candle]
         # print(float_candle)
-        if max(float_candle) > history_max_price:
-            history_max_price = max(float_candle)
-        if min(float_candle) < history_min_price:
-            history_min_price = min(float_candle)
+
+        today_max_price = float_candle[2]
+        today_min_price = float_candle[3]
+        if today_max_price > history_max_price:
+            history_max_price = today_max_price
+        if today_min_price < history_min_price:
+            history_min_price = today_min_price
 
     # print(history_max_price)
     # print(history_min_price)
@@ -31,7 +34,10 @@ def get_DochianChannel(total_candle, PERIOD):
 
 def get_ATR(total_candle, PERIOD):
     part_candle = total_candle[:20]
-    columns = ['timestamp', 'open', 'high', 'low', 'close']
+
+    # columns = ['timestamp', 'open', 'high', 'low', 'close']
+    columns = ['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi']
+
     df = pd.DataFrame(part_candle, columns=columns)
     df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
 
