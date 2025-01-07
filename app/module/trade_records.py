@@ -128,7 +128,7 @@ class TradeRecordManager:
         if last_record:
             name = last_record.execution_cycle
             return name
-        raise Exception(f"生成新编号错误")
+        raise Exception(f"last_execution_cycle: 编号不存在")
 
     @refresh_cache
     def get_trade_record(self, execution_cycle):
