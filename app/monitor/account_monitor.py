@@ -49,6 +49,14 @@ class HoldInfo:
         if target_stock:
             self.newest_all()
 
+    def check_stock(self, new_stock):
+        if self.redis_okx.exists(f"hold_info:{new_stock}"):
+            # print(f"键 '{new_stock}' 存在")
+            return True
+        else:
+            # print(f"键 '{new_stock}' 不存在")
+            return False
+
     def new_stock(self, new_stock):
         self.target_stock = new_stock
         self.newest_all()
