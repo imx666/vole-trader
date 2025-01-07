@@ -52,7 +52,9 @@ agent = TradeAssistant('TURTLE', target_stock, trade_type="actual", LOGGING=LOGG
 
 def notice_change(long_position, sell_times):
     if long_position != hold_info.get("long_position") or sell_times != hold_info.get("sell_times"):
+        global execution_cycle
         LOGGING.info("持仓发生变化,立即拉取redis")
+        execution_cycle = hold_info.newest("execution_cycle")
         compute_sb_price(target_stock)
 
 
@@ -181,11 +183,15 @@ def circle():
                         continue
 
                     # 取消所有挂单，并平仓
+                    LOGGING.info("取消所有挂单并平仓")
                     check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
+                    execution_cycle = hold_info.get("execution_cycle")
+                    if execution_cycle == "ready":
+                        continue
 
                     # 卖出
-                    # close_house(close_price)
                     close_house(close_price, order_type="market")
+                    time.sleep(10)  # 防止重复挂平仓单
                     continue
 
             # 满仓情况,逐步卖出
