@@ -183,7 +183,7 @@ def slip(now_price):
             decimal_part = str_value[decimal_index + 1:]  # 获取小数部分
             leading_zeros = len(decimal_part) - len(decimal_part.lstrip('0'))  # 计算前导零
             delta = round(delta, leading_zeros + 1)
-            print(leading_zeros, delta)
+            # print(leading_zeros, delta)
 
     return delta
 
