@@ -1,7 +1,10 @@
 import time
 import schedule
 import logging.config
-from datetime import datetime
+import json
+import os
+import redis
+from pathlib import Path
 
 # 导入日志配置
 import logging.config
@@ -12,7 +15,6 @@ from utils.logging_config import Logging_dict
 logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("auto_upload_index")
 
-import redis
 
 from module.super_okx import GeniusTrader
 from utils.url_center import redis_url
@@ -20,19 +22,24 @@ from module.common_index import get_DochianChannel, get_ATR
 
 genius_trader = GeniusTrader()
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+total_path = os.path.join(BASE_DIR, f"./target_stocks.json")
+with open(total_path, 'r') as file:
+    target_stock_li = json.load(file)
+
+
+# target_stock_li = [
+#     "BTC-USDT",
+#     "ETH-USDT",
+#     "DOGE-USDT",
+#     "XRP-USDT",
+#     "LUNC-USDT",
+#     "FLOKI-USDT",
+#     "OMI-USDT",
+#     "PEPE-USDT",
+# ]
 
 def update_job():
-    target_stock_li = [
-        "LUNC-USDT",
-        "BTC-USDT",
-        "FLOKI-USDT",
-        "OMI-USDT",
-        "DOGE-USDT",
-        "PEPE-USDT",
-        "ETH-USDT",
-        "XRP-USDT",
-    ]
-
     for target_stock in target_stock_li:
         # 尝试爬取
         for i in range(1, 5):
@@ -61,8 +68,6 @@ def update_job():
             except Exception as e:
                 LOGGING.warning(f"爬取失败--第{i}次:{e}")
                 time.sleep(5)
-
-
 
 
 if __name__ == "__main__":
