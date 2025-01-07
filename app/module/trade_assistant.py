@@ -328,6 +328,14 @@ def trade_auth(side=None, reset=False):
     tradeFlag = hold_info.newest("tradeFlag")
 
     if tradeFlag != "build" and side == "close":
+        execution_cycle = hold_info.newest("execution_cycle")
+        if execution_cycle == "ready":
+            LOGGING.info(f"<{side}>: 平仓已完成")
+            return False
+        trade_record = sqlManager.get_trade_record(execution_cycle)
+        if trade_record["operation"] == 'close' and trade_record["state"] == 'filled':
+            LOGGING.info(f"<{side}>: 平仓已完成")
+            return False
         LOGGING.info(f"<{side}>: trade approved")
         return True
 

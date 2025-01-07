@@ -178,20 +178,20 @@ def circle():
             if long_position > 0:  # 有持仓的情况下，判断完止损后再跳
                 # 止损
                 close_price = price_dict["close_price(ideal)"]
-                if now_price < close_price + slip(now_price):
+                # if now_price < close_price + slip(now_price):
+                if now_price < close_price:
                     if not trade_auth("close"):
                         continue
 
-                    # 取消所有挂单，并平仓
+                    # 取消所有挂单
                     LOGGING.info("取消所有挂单并平仓")
                     check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
-                    execution_cycle = hold_info.get("execution_cycle")
-                    if execution_cycle == "ready":
-                        continue
 
                     # 卖出
                     close_house(close_price, order_type="market")
                     time.sleep(10)  # 防止重复挂平仓单
+                    execution_cycle = hold_info.newest("execution_cycle")
+                    LOGGING.info(f"平仓已完成: {execution_cycle}")
                     continue
 
             # 满仓情况,逐步卖出
