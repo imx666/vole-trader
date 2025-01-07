@@ -238,15 +238,17 @@ class GeniusTrader:
 
         result = self.accountAPI.get_instruments(instType="SPOT")  # 无instId表示获取首页所有产品
         stock_list = result['data']
-        for item in stock_list:
-            instId = item['instId']
-            self.stock_info(instId)
+        stock_list_sort = [item["instId"] for item in stock_list]
+        print(stock_list_sort)
+        # for item in stock_list:
+        #     instId = item['instId']
+        #     self.stock_info(instId)
 
-        for item in self.wilson_favourite_stock_list:
-            self.LOGGING.info(item['target_stock'])
-            self.LOGGING.info(item['预测下单价格'])
-            self.LOGGING.info(item['最小下单数量'])
-            self.LOGGING.info("\n")
+        # for item in self.wilson_favourite_stock_list:
+        #     self.LOGGING.info(item['target_stock'])
+        #     self.LOGGING.info(item['预测下单价格'])
+        #     self.LOGGING.info(item['最小下单数量'])
+        #     self.LOGGING.info("\n")
 
     def buy_order(self, amount, price=None, order_type="limit"):
         """买入"""
@@ -280,9 +282,8 @@ class GeniusTrader:
 
         if result['code'] == '0':
             self.LOGGING.info(f"下单成功: {result}")
-            # self.LOGGING.info(result)
-            if order_type == "market":
-                self.execution_result(result)
+            # if order_type == "market":
+            #     self.execution_result(result)
             # self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
@@ -320,9 +321,8 @@ class GeniusTrader:
 
         if result['code'] == '0':
             self.LOGGING.info(f"下单成功: {result}")
-            # self.LOGGING.info(result)
-            if order_type == "market":
-                self.execution_result(result)
+            # if order_type == "market":
+            #     self.execution_result(result)
             # self.stock_handle_info(self.target_stock)
         else:
             sMsg = result["data"][0]["sMsg"]
@@ -484,8 +484,8 @@ if __name__ == '__main__':
     # # 账户信息
     # genius_trader.account()
 
-    # # 获取整个市场的报价
-    # genius_trader.total_trade_market()
+    # 获取整个市场的报价
+    genius_trader.total_trade_market()
 
     # # 股票k线
     # genius_trader.stock_candle(target_stock)
@@ -497,11 +497,11 @@ if __name__ == '__main__':
     # amount = genius_trader.stock_handle_info(target_stock)
     # print(f"amount: {amount}")
 
-    # 买入
-    amount = 2200
-    target_market_price = 0.00012345
-    client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
-    genius_trader.execution_result(client_order_id=client_order_id)
+    # # 买入
+    # amount = 2200
+    # target_market_price = 0.00012345
+    # client_order_id, timestamp_ms = genius_trader.buy_order(amount=amount, price=target_market_price)
+    # genius_trader.execution_result(client_order_id=client_order_id)
 
     # # 添加一条新记录
     # manager.add_trade_record(
