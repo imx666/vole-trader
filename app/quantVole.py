@@ -221,6 +221,9 @@ def circle():
                     decrease_house(target_market_price, sell_times, order_type="market")
                     continue
 
+    except KeyboardInterrupt:
+        LOGGING.info(f"{target_stock} 手动终止成功")
+
     except Exception as e:
         LOGGING.error(e)
 
