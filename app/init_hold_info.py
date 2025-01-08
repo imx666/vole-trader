@@ -32,15 +32,15 @@ if __name__ == '__main__':
 
 
     target_stock = "BTC-USDT"
-    target_stock = "DOGE-USDT"
     target_stock = "ETH-USDT"
-    target_stock = "FLOKI-USDT"
+    target_stock = "DOGE-USDT"
     target_stock = "XRP-USDT"
     target_stock = "PEPE-USDT"
-    target_stock = "OMI-USDT"
-    target_stock = "LUNC-USDT"
 
-    target_stock = "RACA-USDT"
+    target_stock = "FLOKI-USDT"
+    target_stock = "LUNC-USDT"
+    target_stock = "OMI-USDT"
+    # target_stock = "RACA-USDT"
     # target_stock = "JST-USDT"
     # target_stock = "ZRX-USDT"
     # target_stock = "ZIL-USDT"
