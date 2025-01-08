@@ -40,11 +40,16 @@ Logging_dict = {
         "auto_upload_index": logging_config("auto_upload_index"),
         "auto_upload_account": logging_config("auto_upload_account"),
         "price_monitor": logging_config("price_monitor"),
-        "quantVole-DOGE": logging_config("quantVole-DOGE"),
-        "quantVole-ETH": logging_config("quantVole-ETH"),
         "quantVole-BTC": logging_config("quantVole-BTC"),
-        "quantVole-FLOKI": logging_config("quantVole-FLOKI"),
+        "quantVole-ETH": logging_config("quantVole-ETH"),
+        "quantVole-DOGE": logging_config("quantVole-DOGE"),
         "quantVole-XRP": logging_config("quantVole-XRP"),
+        "quantVole-FLOKI": logging_config("quantVole-FLOKI"),
+        "quantVole-RACA": logging_config("quantVole-RACA"),
+        "quantVole-JST": logging_config("quantVole-JST"),
+        "quantVole-ZRX": logging_config("quantVole-ZRX"),
+        "quantVole-ZIL": logging_config("quantVole-ZIL"),
+        "quantVole-ORDI": logging_config("quantVole-ORDI"),
     },
     "loggers": {
         "app_01": {
@@ -72,8 +77,8 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "quantVole-DOGE": {
-            "handlers": ["quantVole-DOGE"],
+        "quantVole-BTC": {
+            "handlers": ["quantVole-BTC"],
             "level": "DEBUG",
             "propagate": False,
         },
@@ -82,8 +87,13 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "quantVole-BTC": {
-            "handlers": ["quantVole-BTC"],
+        "quantVole-DOGE": {
+            "handlers": ["quantVole-DOGE"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "quantVole-XRP": {
+            "handlers": ["quantVole-XRP"],
             "level": "DEBUG",
             "propagate": False,
         },
@@ -92,8 +102,28 @@ Logging_dict = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "quantVole-XRP": {
-            "handlers": ["quantVole-XRP"],
+        "quantVole-RACA": {
+            "handlers": ["quantVole-RACA"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "quantVole-JST": {
+            "handlers": ["quantVole-JST"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "quantVole-ZRX": {
+            "handlers": ["quantVole-ZRX"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "quantVole-ZIL": {
+            "handlers": ["quantVole-ZIL"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "quantVole-ORDI": {
+            "handlers": ["quantVole-ORDI"],
             "level": "DEBUG",
             "propagate": False,
         },
