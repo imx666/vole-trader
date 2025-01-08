@@ -29,14 +29,14 @@ LOGGING = logging.getLogger(f"price_monitor")
 
 
 target_stock_li = [
-  "ZRX-USDT",
+  "FLOKI-USDT",
   "LUNC-USDT",
   "OMI-USDT",
+  "ZRX-USDT",
   "RACA-USDT",
   "JST-USDT",
   "ZIL-USDT",
   "ORDI-USDT",
-  "FLOKI-USDT",
 ]
 
 args_li = []
