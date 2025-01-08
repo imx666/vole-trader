@@ -50,6 +50,7 @@ Logging_dict = {
         "quantVole-ZRX": logging_config("quantVole-ZRX"),
         "quantVole-ZIL": logging_config("quantVole-ZIL"),
         "quantVole-ORDI": logging_config("quantVole-ORDI"),
+        "quantVole-LUNC": logging_config("quantVole-LUNC"),
     },
     "loggers": {
         "app_01": {
@@ -124,6 +125,11 @@ Logging_dict = {
         },
         "quantVole-ORDI": {
             "handlers": ["quantVole-ORDI"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "quantVole-LUNC": {
+            "handlers": ["quantVole-LUNC"],
             "level": "DEBUG",
             "propagate": False,
         },
