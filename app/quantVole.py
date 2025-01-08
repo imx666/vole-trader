@@ -107,6 +107,12 @@ def decrease_house(target_market_price, sell_times, order_type="limit"):
 
 
 def close_house(close_price, order_type="limit"):
+    global execution_cycle
+
+    # 取消所有挂单
+    LOGGING.info("取消所有挂单并平仓")
+    check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
+
     price_dict = hold_info.price_dict
     msg = price_dict["close_type"]
     ratio = 1
@@ -116,6 +122,14 @@ def close_house(close_price, order_type="limit"):
         "tradeFlag": "no-auth"
     }
     hold_info.pull_dict(new_info)
+
+    # 等待成交
+    time.sleep(10)
+
+    # 检查平仓是否顺利进行
+    check_state(target_stock, withdraw_order=False, LOGGING=LOGGING)
+    execution_cycle = hold_info.newest("execution_cycle")
+    LOGGING.info(f"平仓已完成: {execution_cycle}")
 
 
 def circle():
@@ -139,16 +153,17 @@ def circle():
             # 获取最新报价
             data_dict = get_real_time_info(target_stock)
             if data_dict is None:
-                time.sleep(0.01)
+                time.sleep(0.05)
                 continue
 
             now_price = data_dict["now_price"]
             agent.now_price = now_price
             sell_times = hold_info.newest("sell_times")
 
-            # 更新策略参数
+            # 持仓改变，更新策略参数
             notice_change(long_position, sell_times)
 
+            # 获取目标价
             price_dict = hold_info.price_dict
 
             # 空仓时
@@ -178,20 +193,12 @@ def circle():
             if long_position > 0:  # 有持仓的情况下，判断完止损后再跳
                 # 止损
                 close_price = price_dict["close_price(ideal)"]
-                # if now_price < close_price + slip(now_price):
                 if now_price < close_price:
                     if not trade_auth("close"):
                         continue
 
-                    # 取消所有挂单
-                    LOGGING.info("取消所有挂单并平仓")
-                    check_state(target_stock, withdraw_order=True, LOGGING=LOGGING)
-
-                    # 卖出
+                    # 市价全平
                     close_house(close_price, order_type="market")
-                    time.sleep(10)  # 防止重复挂平仓单
-                    execution_cycle = hold_info.newest("execution_cycle")
-                    LOGGING.info(f"平仓已完成: {execution_cycle}")
                     continue
 
             # 满仓情况,逐步卖出
