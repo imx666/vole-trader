@@ -33,7 +33,7 @@ if __name__ == '__main__':
     from utils.files import find_or_create_doc
 
     target_stock = "BTC-USDT"
-    target_stock = "LUNC-USDT"
+    # target_stock = "LUNC-USDT"
     # target_stock = "ETH-USDT"
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
@@ -44,11 +44,11 @@ if __name__ == '__main__':
     # target_stock = "JST-USDT"
     # target_stock = "ZRX-USDT"
     # target_stock = "ZIL-USDT"
-    # target_stock = "BOME-USDT"
-    # target_stock = "ARKM-USDT"
     # target_stock = "ORDI-USDT"
-    # target_stock = "ZRO-USDT"
-    # target_stock = "MEW-USDT"
+    # target_stock = "BOME-USDT"  # 4H的时长不够
+    # target_stock = "ARKM-USDT"  # 4H的时长不够
+    # target_stock = "ZRO-USDT"  # 4H的时长不够
+    # target_stock = "MEW-USDT"  # 4H的时长不够
 
     pre_day = None
     # pre_day = 1715587200000
@@ -61,11 +61,12 @@ if __name__ == '__main__':
 # IndexError: list index out of range
 
     max_day = 100
+    max_day = 22
     for i in range(max_day):
         print(f"第: {i}次")
         # period = "1H"
-        # period = "4H"
-        period = "15m"
+        period = "4H"
+        # period = "15m"
         total_candle = genius_trader.stock_candle(target_stock, after=pre_day, period=period)
         # total_candle.reverse()  # 由于时间，倒序
         pre_day = total_candle[-1][0]
@@ -83,7 +84,7 @@ if __name__ == '__main__':
 
     # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
     # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}-longtest.json")
-    total_path = os.path.join(BASE_DIR, f"./data/15m/{target_stock}.json")
+    total_path = os.path.join(BASE_DIR, f"./data/{period}/{target_stock}.json")
 
     find_or_create_doc(total_path, 'json')
     json_data = json.dumps(long_period_candle)

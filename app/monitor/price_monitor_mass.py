@@ -111,7 +111,7 @@ async def main():
                         target_stock = data_dict["data"][0]["instId"]
                         now_price = float(data_dict["data"][0]["px"])
                         trading_volume = float(data_dict["data"][0]["sz"])
-                        print(data_dict)
+                        # print(data_dict)
 
                         # LOGGING.info(f"now_price: {now_price}")
                         update_real_time_info(target_stock, now_price, trading_volume)
