@@ -1,15 +1,19 @@
-[
-  "BTC-USDT",
-  "ETH-USDT",
-  "DOGE-USDT",
-  "XRP-USDT",
-  "PEPE-USDT",
-  "FLOKI-USDT",
-  "LUNC-USDT",
-  "OMI-USDT",
-  "RACA-USDT",
-  "JST-USDT",
-  "ZRX-USDT",
-  "ZIL-USDT",
-  "ORDI-USDT"
-]
+{
+  "target_stock_main": [
+    "BTC-USDT",
+    "ETH-USDT",
+    "DOGE-USDT",
+    "XRP-USDT",
+    "PEPE-USDT"
+  ],
+  "target_stock_mass": [
+    "FLOKI-USDT",
+    "LUNC-USDT",
+    "OMI-USDT",
+    "ZRX-USDT",
+    "RACA-USDT",
+    "JST-USDT",
+    "ZIL-USDT",
+    "ORDI-USDT"
+  ]
+}

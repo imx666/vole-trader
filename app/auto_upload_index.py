@@ -25,7 +25,10 @@ genius_trader = GeniusTrader()
 BASE_DIR = Path(__file__).resolve().parent.parent
 total_path = os.path.join(BASE_DIR, f"./target_stocks.json")
 with open(total_path, 'r') as file:
-    target_stock_li = json.load(file)
+    stock_dict = json.load(file)
+    # target_stock_li = json.load(file)
+
+target_stock_li = stock_dict["target_stock_mass"] + stock_dict["target_stock_main"]
 
 
 # target_stock_li = [

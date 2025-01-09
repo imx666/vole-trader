@@ -35,15 +35,6 @@ else:
     sys.exit(1)  # 使用非零状态码表示异常退出
 
 
-
-# target_stock = "LUNC-USDT"
-# target_stock = "BTC-USDT"
-# target_stock = "ETH-USDT"
-# target_stock = "FLOKI-USDT"
-# target_stock = "OMI-USDT"
-# target_stock = "DOGE-USDT"
-# target_stock = "PEPE-USDT"
-
 # 订阅产品频道的消息
 subscribe_msg = {
     "op": "subscribe",

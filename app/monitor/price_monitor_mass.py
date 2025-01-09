@@ -26,21 +26,15 @@ from utils.logging_config import Logging_dict
 logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger(f"price_monitor")
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+total_path = os.path.join(BASE_DIR, f"../target_stocks.json")
+with open(total_path, 'r') as file:
+    stock_dict = json.load(file)
 
-
-target_stock_li = [
-  "FLOKI-USDT",
-  "LUNC-USDT",
-  "OMI-USDT",
-  "ZRX-USDT",
-  "RACA-USDT",
-  "JST-USDT",
-  "ZIL-USDT",
-  "ORDI-USDT",
-]
+target_stock_mass = stock_dict["target_stock_mass"]
 
 args_li = []
-for stock in target_stock_li:
+for stock in target_stock_mass:
     arg = {
             "channel": "trades",
             "instId": stock
@@ -53,20 +47,6 @@ subscribe_msg = {
     "args": args_li
 }
 
-# # 订阅产品频道的消息
-# subscribe_msg = {
-#     "op": "subscribe",
-#     "args": [
-#         {
-#             "channel": "trades",
-#             "instId": target_stock_li[0]
-#         },
-#         {
-#             "channel": "trades",
-#             "instId": target_stock_li[3]
-#         }
-#     ]
-# }
 
 from utils.url_center import redis_url_fastest
 redis_fastest = redis.Redis.from_url(redis_url_fastest)
@@ -124,7 +104,7 @@ async def main():
                             continue
 
                         except Exception as e:
-                            LOGGING.error(f"{target_stock_li}连接关闭，正在重连…… {e}")
+                            LOGGING.error(f"{target_stock_mass}连接关闭，正在重连…… {e}")
                             break
 
         # 重新尝试连接，使用指数退避策略
