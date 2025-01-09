@@ -1,30 +1,24 @@
-# 导入日志配置
-import logging.config
-import time
-from datetime import datetime
-
-from utils.logging_config import Logging_dict
-
-logging.config.dictConfig(Logging_dict)
-LOGGING = logging.getLogger("app_01")
-
 import redis
 
-from utils.url_center import redis_url_fastest
-from monitor.account_monitor import HoldInfo
-
-redis_okx = redis.Redis.from_url(redis_url_fastest)
-
 if __name__ == '__main__':
-    # 指定.env.dev文件的路径
+    import os
+    import sys
     from pathlib import Path
     from dotenv import load_dotenv
 
+    # 锁定系统运行路径
     project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-    import os
+    dotenv_path = os.path.join(project_path, '../')
+    sys.path.append(dotenv_path)
 
-    dotenv_path = os.path.join(project_path, '../.env.dev')
+    dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
     load_dotenv(dotenv_path)  # 载入环境变量
+
+
+    from utils.url_center import redis_url_fastest
+    from monitor.account_monitor import HoldInfo
+
+    redis_okx = redis.Redis.from_url(redis_url_fastest)
 
     BASE_balance = 50
     BASE_risk_rate = 0.0035
@@ -61,7 +55,9 @@ if __name__ == '__main__':
                        '<max_sell_times>': 3,
                    })
 
-    hold_info = HoldInfo(target_stock)
+    print('oook')
+
+    # hold_info = HoldInfo(target_stock)
 
 
 
