@@ -210,7 +210,7 @@ def load_index(target_stock):
 
     timestamp_seconds = time.time()
     timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
-    update_time = decoded_data["update_time"]
+    update_time = float(decoded_data["update_time"])
     delta_time = timestamp_ms - update_time
     if delta_time > 1000 * 60 * 60 * 4:  # s,min,h
         raise Exception(f"价格数据已经严重滞后: {delta_time / 1000} s")

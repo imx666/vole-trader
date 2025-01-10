@@ -210,6 +210,7 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
 
     # 查询未成交订单并取消
     sqlManager.target_stock = hold_stock
+    geniusTrader.target_stock = hold_stock
     geniusTrader.LOGGING = LOGGING
     record_list = sqlManager.filter_record(state="live") + sqlManager.filter_record(state="partially_filled")
     if not record_list:
