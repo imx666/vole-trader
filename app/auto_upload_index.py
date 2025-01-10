@@ -46,10 +46,16 @@ def update_job():
 
                 redis_okx = redis.Redis.from_url(redis_url)
                 current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                redis_okx.hset(f"common_index:{target_stock}", 'update_time', current_time)
+                timestamp_seconds = time.time()
+                timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
                 redis_okx.hset(f"common_index:{target_stock}",
-                               mapping={'history_max_price': history_max_price, 'history_min_price': history_min_price,
-                                        'ATR': ATR})
+                               mapping={
+                                    'history_max_price': history_max_price,
+                                    'history_min_price': history_min_price,
+                                    'ATR': ATR,
+                                    'update_time': timestamp_ms,
+                                    'update_time(24时制)': current_time,
+                               })
 
                 LOGGING.info(f"target_stock:{target_stock}")
                 LOGGING.info(f"history_max_price:{history_max_price}")
