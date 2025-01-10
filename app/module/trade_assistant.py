@@ -191,7 +191,7 @@ def slip(now_price):
 def load_index(target_stock):
     # 获取单个字段的值
     redis_okx = redis.Redis.from_url(redis_url)
-    name = redis_okx.hget(f"common_index:{target_stock}", 'update_time')
+    name = redis_okx.hget(f"common_index:{target_stock}", 'update_time(24时制)')
     if name is None:
         raise Exception(f"load_reference_index: redis: {target_stock}股票参数不存在")
 
@@ -207,6 +207,13 @@ def load_index(target_stock):
     up_Dochian_price = float(decoded_data['history_max_price'])
     down_Dochian_price = float(decoded_data['history_min_price'])
     ATR = float(decoded_data['ATR'])
+
+    timestamp_seconds = time.time()
+    timestamp_ms = int(timestamp_seconds * 1000)  # 转换为毫秒
+    update_time = decoded_data["update_time"]
+    delta_time = timestamp_ms - update_time
+    if delta_time > 1000 * 60 * 60 * 4:  # s,min,h
+        raise Exception(f"价格数据已经严重滞后: {delta_time / 1000} s")
 
     return up_Dochian_price, down_Dochian_price, ATR, last_time
 
