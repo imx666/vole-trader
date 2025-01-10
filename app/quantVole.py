@@ -6,7 +6,6 @@ from utils.url_center import redis_url
 from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
 
-# from module.trade_assistant import *
 from module.trade_records import TradeRecordManager
 from module.trade_assistant import hold_info
 from module.trade_assistant import TradeAssistant
@@ -123,13 +122,13 @@ def close_house(close_price, order_type="limit"):
     }
     hold_info.pull_dict(new_info)
 
-    # 等待成交
+    LOGGING.info("休眠10s并等待成交")
     time.sleep(10)
 
     # 检查平仓是否顺利进行
     check_state(target_stock, withdraw_order=False, LOGGING=LOGGING)
     execution_cycle = hold_info.newest("execution_cycle")
-    LOGGING.info(f"平仓已完成: {execution_cycle}")
+    LOGGING.info(f"平仓已完成, 新execution_cycle: {execution_cycle}")
 
 
 def circle():
@@ -190,7 +189,8 @@ def circle():
 
             # 卖出 ============= SELL =========SELL===========SELL===================== SELL
 
-            if long_position > 0:  # 有持仓的情况下，判断完止损后再跳
+            # 有持仓的情况下，判断完止损后再跳
+            if long_position > 0:
                 # 止损
                 close_price = price_dict["close_price(ideal)"]
                 if now_price < close_price:
