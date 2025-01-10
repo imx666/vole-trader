@@ -26,21 +26,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 total_path = os.path.join(BASE_DIR, f"./target_stocks.json")
 with open(total_path, 'r') as file:
     stock_dict = json.load(file)
-    # target_stock_li = json.load(file)
 
 target_stock_li = stock_dict["target_stock_mass"] + stock_dict["target_stock_main"]
 
-
-# target_stock_li = [
-#     "BTC-USDT",
-#     "ETH-USDT",
-#     "DOGE-USDT",
-#     "XRP-USDT",
-#     "LUNC-USDT",
-#     "FLOKI-USDT",
-#     "OMI-USDT",
-#     "PEPE-USDT",
-# ]
 
 def update_job():
     for target_stock in target_stock_li:
