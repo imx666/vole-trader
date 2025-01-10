@@ -1,5 +1,7 @@
 import sys
 import time
+from sqlite3 import OperationalError
+
 import redis
 from utils.url_center import redis_url
 
@@ -223,6 +225,16 @@ def circle():
 
     except KeyboardInterrupt:
         LOGGING.info(f"{target_stock} 手动终止成功")
+
+    except OperationalError as e:
+        if e.args[0] == 2006:
+            LOGGING.error("MySQL 服务器连接断开，尝试重新连接")
+            # 在这里可以选择重新连接数据库或者其他处理逻辑
+            # 例如：重新创建连接对象或退出程序
+
+        else:
+            LOGGING.error(f"捕获到其他数据库错误: {e}")
+            # 处理其他 OperationalError 错误
 
     except Exception as e:
         LOGGING.error(e)
