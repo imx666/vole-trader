@@ -37,7 +37,7 @@ def update_chain():
             # 验证是否有持仓
             hold_type = hold_info.check_stock(hold_stock)
             if hold_type:
-                check_state(hold_stock, withdraw_order=False, LOGGING=LOGGING)
+                check_state(hold_stock, withdraw_order=False, LOGGING=LOGGING, sort=True)
         except Exception as e:
             LOGGING.error(e)
 
@@ -55,4 +55,4 @@ if __name__ == "__main__":
             schedule.run_pending()
             time.sleep(1)
     except KeyboardInterrupt:
-        LOGGING.info("定时任务已停止")
+        LOGGING.info("定时任务已手动停止")

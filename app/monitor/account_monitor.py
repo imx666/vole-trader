@@ -193,15 +193,18 @@ def search_and_update(result, client_order_id, withdraw_order):
         sqlManager.update_trade_record(client_order_id, state="canceled")
 
 
-def check_state(hold_stock, withdraw_order=False, LOGGING=None):
+def check_state(hold_stock, withdraw_order=False, LOGGING=None, sort=False):
     # 持仓信息
     hold_info.LOGGING = LOGGING
     hold_info.new_stock(hold_stock)
-    LOGGING.info(f"\n")
-    LOGGING.info(f"检查更新状态: {hold_stock}")
 
     # 获取编号
     execution_cycle = hold_info.get("execution_cycle")
+    if execution_cycle == "ready" and sort is True:
+        return
+
+    LOGGING.info(f"\n")
+    LOGGING.info(f"检查更新状态: {hold_stock}")
 
     # ready情况下不用更新
     if execution_cycle == "ready":
@@ -213,8 +216,9 @@ def check_state(hold_stock, withdraw_order=False, LOGGING=None):
     geniusTrader.target_stock = hold_stock
     geniusTrader.LOGGING = LOGGING
     record_list = sqlManager.filter_record(state="live") + sqlManager.filter_record(state="partially_filled")
+    LOGGING.info(execution_cycle)
     if not record_list:
-        LOGGING.info(f"{execution_cycle}: 无live和part订单")
+        LOGGING.info(f"无live和part订单")
         return
 
     LOGGING.info(f"live和part订单数目: {len(record_list)}")
@@ -331,8 +335,8 @@ geniusTrader = GeniusTrader()
 if __name__ == '__main__':
     hold_stock = "FLOKI-USDT"
     hold_info = HoldInfo(hold_stock)
-    execution_cycle = hold_info.get("execution_cycle")
-    print(execution_cycle)
+    execution_cycle2 = hold_info.get("execution_cycle")
+    print(execution_cycle2)
     # long_position = sqlManager.get(execution_cycle, "long_position")
     # print(long_position)
     check_state(hold_info)
