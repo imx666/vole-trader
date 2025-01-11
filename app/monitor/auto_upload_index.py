@@ -2,9 +2,17 @@ import time
 import schedule
 import logging.config
 import json
-import os
 import redis
+
+import os
+import sys
 from pathlib import Path
+
+# 锁定系统运行路径
+project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
+dotenv_path = os.path.join(project_path, '../')
+sys.path.append(dotenv_path)
+
 
 # 导入日志配置
 import logging.config
@@ -23,7 +31,7 @@ from module.common_index import get_DochianChannel, get_ATR
 genius_trader = GeniusTrader()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-total_path = os.path.join(BASE_DIR, f"./target_stocks.json")
+total_path = os.path.join(BASE_DIR, f"../target_stocks.json")
 with open(total_path, 'r') as file:
     stock_dict = json.load(file)
 
