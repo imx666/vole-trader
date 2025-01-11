@@ -91,8 +91,8 @@ if __name__ == '__main__':
     with open(total_path, 'w', encoding='utf-8') as f:
         f.write(json_data)
 
-    with open(total_path, 'r') as file:
-        loaded_data = json.load(file)
+    # with open(total_path, 'r') as file:
+    #     loaded_data = json.load(file)
     # print(loaded_data)
 
     print(f"{target_stock} 写入完成")
