@@ -428,7 +428,8 @@ class GeniusTrader:
             self.LOGGING.info(result)
             raise Exception(f"查询失败: {sMsg}")
 
-        self.LOGGING.info(result['msg'])
+        if result['msg']:
+            self.LOGGING.info(result['msg'])
 
         deal_data = result['data'][0]
         side = deal_data["side"]
@@ -484,8 +485,8 @@ if __name__ == '__main__':
     # # 账户信息
     # genius_trader.account()
 
-    # 获取整个市场的报价
-    genius_trader.total_trade_market()
+    # # 获取整个市场的报价
+    # genius_trader.total_trade_market()
 
     # # 股票k线
     # genius_trader.stock_candle(target_stock)
@@ -527,5 +528,5 @@ if __name__ == '__main__':
 
     # 查看订单执行结果
     # genius_trader.execution_result(target_and_ordId=["OMI-USDT","2006379750208077824"])
-    # genius_trader.execution_result(target_and_ordId=["DOGE-USDT","2078711079121231872"])
-    # genius_trader.execution_result(client_order_id="FLOKI1734759229556")
+    # genius_trader.execution_result(target_and_ordId=["ORDI-USDT","2147451449837838336"])
+    genius_trader.execution_result(client_order_id="ORDI1736495506352")
