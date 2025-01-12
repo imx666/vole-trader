@@ -14,6 +14,12 @@ def send_feishu_info(title, body, custom=None, supreme_auth=False, jerry_mouse=F
         if APP_ENV != "prod":
             return "非生产环境,feishu_msg没有发送权限"
 
+    from pathlib import Path
+    from dotenv import load_dotenv
+
+    project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
+    dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
+    load_dotenv(dotenv_path)  # 载入环境变量
     FEISHU_AUTH_CODE = os.getenv("FEISHU_AUTH_CODE_jerry") if jerry_mouse else os.getenv("FEISHU_AUTH_CODE_tom")
 
     api_url = f"https://open.feishu.cn/open-apis/bot/v2/hook/{FEISHU_AUTH_CODE}"
@@ -82,7 +88,6 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
-    # project_path = os.getcwd()  # 此脚本的运行的"启动"路径
     dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
     load_dotenv(dotenv_path)  # 载入环境变量
 
