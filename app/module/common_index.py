@@ -33,10 +33,11 @@ def get_DochianChannel(total_candle, PERIOD):
 
 
 def get_ATR(total_candle, PERIOD):
-    part_candle = total_candle[:20]
+    part_candle_origin = total_candle[:20]
+    part_candle = [item[:5] for item in part_candle_origin]
 
-    # columns = ['timestamp', 'open', 'high', 'low', 'close']
-    columns = ['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi']
+    columns = ['timestamp', 'open', 'high', 'low', 'close']
+    # columns = ['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi']
 
     df = pd.DataFrame(part_candle, columns=columns)
     df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)

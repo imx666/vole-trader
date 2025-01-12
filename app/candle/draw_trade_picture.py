@@ -11,13 +11,13 @@ from matplotlib.lines import Line2D
 
 period = "1D"
 period = "4H"
-period = "15m"
+# period = "15m"
 
 compensate_dict = {
     "1D": 1,
     "4H": 1 / 6,
     "1H": 1 / 24,
-    "15m": 1 / 96,
+    "15m": 1 / 48,
 }
 
 compensate = compensate_dict.get(period, 1)
@@ -48,7 +48,8 @@ def draw_picture_K(total_path, target_stock, start_day=0, end_day=None):
         long_period_candle = long_period_candle[start_day:end_day]
 
     # df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
-    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi'])
+    df = pd.DataFrame(long_period_candle,
+                      columns=['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
     df.set_index('timestamp', inplace=True)
@@ -85,8 +86,10 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     if end_day is not None:
         long_period_candle = long_period_candle[start_day:end_day]
 
-    # df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close'])
-    df = pd.DataFrame(long_period_candle, columns=['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi'])
+    long_period_candle2 = [item[:5] for item in long_period_candle]
+
+    df = pd.DataFrame(long_period_candle2, columns=['timestamp', 'open', 'high', 'low', 'close'])
+    # df = pd.DataFrame(long_period_candle2, columns=['timestamp', 'open', 'high', 'low', 'close', 'amount', 'usdt', 'usdt2', 'fi'])
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
     df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].astype(float)
     df.set_index('timestamp', inplace=True)
@@ -263,5 +266,5 @@ if __name__ == '__main__':
     # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
     total_path = os.path.join(BASE_DIR, f"./data/15m/{target_stock}.json")
 
-    end_day = 100*10000
+    end_day = 100 * 10000
     draw_picture_K(total_path, target_stock, end_day=end_day)
