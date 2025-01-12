@@ -31,6 +31,7 @@ logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("app_01")
 
 from MsgSender.wx_msg import send_wx_info
+from MsgSender.feishu_msg import send_feishu_info
 from utils.url_center import redis_url_fastest
 from module.super_okx import GeniusTrader
 from module.trade_records import TradeRecordManager
@@ -140,6 +141,11 @@ def final_and_reset(trade_record):
         delta=delta,
         profit_rate=profit_rate,
     )
+    side = "赚取" if delta > 0 else "亏损"
+    formatted_profit_rate = '{:.2%}'.format(profit_rate)
+    res = send_feishu_info(f"{execution_cycle}", f"平仓完成\n{side}: {delta} USDT\n利润率: {formatted_profit_rate}", supreme_auth=True,
+                           jerry_mouse=True)
+    LOGGING.info(res)
 
     # 重置余额
     new_info = {
