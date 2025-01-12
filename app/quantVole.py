@@ -5,9 +5,7 @@ from sqlite3 import OperationalError
 import redis
 from utils.url_center import redis_url
 
-from MsgSender.wx_msg import send_wx_info
 from MsgSender.feishu_msg import send_feishu_info
-
 from module.trade_records import TradeRecordManager
 from module.trade_assistant import hold_info
 from module.trade_assistant import TradeAssistant
@@ -227,6 +225,8 @@ def circle():
         LOGGING.info(f"{target_stock} 手动终止成功")
 
     except OperationalError as e:
+        # (pymysql.err.OperationalError)(2006, "MySQL server has gone away (BrokenPipeError(32, 'Broken pipe'))")
+        # (Background on this error at: https://sqlalche.me/e/20/e3q8)
         if e.args[0] == 2006:
             LOGGING.error("MySQL 服务器连接断开，尝试重新连接")
             # 在这里可以选择重新连接数据库或者其他处理逻辑
@@ -237,7 +237,10 @@ def circle():
             # 处理其他 OperationalError 错误
 
     except Exception as e:
+        e = str(e)
         LOGGING.error(e)
+        res = send_feishu_info(f"Error: {execution_cycle}", e, supreme_auth=True, jerry_mouse=True)
+        LOGGING.info(res)
 
 
 if __name__ == '__main__':
