@@ -149,6 +149,10 @@ def circle():
                 time.sleep(1)
                 continue
 
+            if pending_order == 999 and long_position > 0:  # 外部介入强制平仓
+                close_house(999, order_type="market")  # 市价全平
+                raise Exception("外部介入强制平仓")
+
             # 获取最新报价
             data_dict = get_real_time_info(target_stock)
             if data_dict is None:
@@ -165,15 +169,13 @@ def circle():
             # 获取目标价
             price_dict = hold_info.price_dict
 
-            # 空仓时
+            # 空仓时，建仓
             if long_position == 0:
                 target_market_price = price_dict['build_price(ideal)']
                 if target_market_price - slip(now_price) < now_price:
                     if not trade_auth("buy"):
                         continue
-
-                    # 建仓
-                    build_house(target_market_price)
+                    build_house(target_market_price, order_type="market")
                     continue
 
             # 未满仓,加仓
@@ -182,23 +184,23 @@ def circle():
                 if target_market_price - slip(now_price) < now_price:
                     if not trade_auth("buy"):
                         continue
-
-                    # 买入
                     add_house(target_market_price)
                     continue
 
-            # 卖出 ============= SELL =========SELL===========SELL===================== SELL
-
-            # 有持仓的情况下，判断完止损后再跳
+            # 超级止损
             if long_position > 0:
-                # 止损
+                close_price = price_dict["close_price(force)"]
+                if now_price < close_price:
+                    # 任意阶段，跌破即平仓
+                    close_house(close_price, order_type="market")  # 市价全平
+                    continue
+
                 close_price = price_dict["close_price(ideal)"]
                 if now_price < close_price:
+                    # 建仓阶段是没权限的
                     if not trade_auth("close"):
                         continue
-
-                    # 市价全平
-                    close_house(close_price, order_type="market")
+                    close_house(close_price, order_type="market")  # 市价全平
                     continue
 
             # 满仓情况,逐步卖出
@@ -208,7 +210,6 @@ def circle():
                 if now_price < target_market_price:
                     if not trade_auth("sell"):
                         continue
-
                     # 限价卖出
                     decrease_house(target_market_price, sell_times)
                     continue
@@ -216,7 +217,6 @@ def circle():
                 if now_price > target_market_price:
                     if not trade_auth("sell"):
                         continue
-
                     # 市价卖出
                     decrease_house(target_market_price, sell_times, order_type="market")
                     continue

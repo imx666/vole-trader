@@ -252,16 +252,12 @@ def compute_sb_price(target_stock):
     long_position = hold_info.newest("long_position")
     execution_cycle = hold_info.newest("execution_cycle")
 
-    # sqlManager = TradeRecordManager(target_stock, "TURTLE")
     build_price = sqlManager.get(execution_cycle, "build_price")
     total_max_value = sqlManager.get(execution_cycle, "total_max_value")
     total_max_amount = sqlManager.get(execution_cycle, "total_max_amount")
     hold_average_price = total_max_value / total_max_amount if total_max_amount > 0 else build_price
 
     LOGGING.info(f"多头持仓: {long_position}")
-    if long_position > 0:
-        LOGGING.info(f"建仓价: {build_price}")
-        LOGGING.info(f"持仓均价: {hold_average_price}")
 
     # 成本平仓价
     stop_loss_price = round(hold_average_price - 0.5 * ATR, 10)
@@ -291,6 +287,9 @@ def compute_sb_price(target_stock):
         LOGGING.info(f"理想建仓价: {up_Dochian_price}")
 
     if long_position > 0:
+        LOGGING.info(f"建仓价: {build_price}")
+        LOGGING.info(f"持仓均价: {hold_average_price}")
+
         add_price_list = []
         reduce_price_list = []
 
@@ -304,8 +303,10 @@ def compute_sb_price(target_stock):
 
         price_dict_2_redis['add_price_list(ideal)'] = str(add_price_list)
         price_dict_2_redis['reduce_price_list(ideal)'] = str(reduce_price_list)
+        price_dict_2_redis['close_price(force)'] = hold_average_price * 0.93
         price_dict['add_price_list(ideal)'] = add_price_list
         price_dict['reduce_price_list(ideal)'] = reduce_price_list
+        price_dict['close_price(force)'] = hold_average_price * 0.93
 
     hold_info.pull_dict(price_dict_2_redis)
     LOGGING.info(price_dict)
