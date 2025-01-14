@@ -1,0 +1,74 @@
+import os
+import sys
+import json
+import time
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 锁定系统运行路径
+project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
+dotenv_path = os.path.join(project_path, '../')
+sys.path.append(dotenv_path)
+
+dotenv_path = os.path.join(project_path, '../../.env.dev')  # 指定.env.dev文件的路径
+load_dotenv(dotenv_path)  # 载入环境变量
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+from simulate.simulate_TURTLE import execution_plan
+
+os.system("clear")
+os.system("clear")
+time.sleep(2)
+target_stock = os.getenv("target_stock")
+
+# target_stock = "BTC-USDT"
+# target_stock = "ETH-USDT"
+# target_stock = "DOGE-USDT"
+
+
+target_stock_li = [
+    "PEPE-USDT",
+    "FLOKI-USDT",
+    "LUNC-USDT",
+    "OMI-USDT",
+    "ZRX-USDT",
+    "RACA-USDT",
+    "JST-USDT",
+    "ZIL-USDT",
+    "ORDI-USDT"
+]
+
+PERIOD = 3
+
+start_day = 0
+end_day = 180 * 6
+
+start_day = 180 * 6
+end_day = -1
+
+# start_day = 0
+# end_day = -1
+
+final_balance_li = []
+for target_stock in target_stock_li:
+    total_path = os.path.join(BASE_DIR, f"../data/4H/{target_stock}.json")
+    with open(total_path, 'r') as file:
+        long_period_candle = json.load(file)
+        print(len(long_period_candle))
+
+    long_period_candle = long_period_candle[start_day:end_day]
+    hold_market_price = execution_plan(PERIOD, target_stock, long_period_candle, total_path)
+    final_balance_li.append(hold_market_price)
+
+print(final_balance_li)
+
+# 前半年
+# [237.38133259490223, 140.07085975561776, 86.95257647125578, 127.68773773510372, 141.06654183715568, 168.90808711706413, 134.1064482136139, 92.50645596710571, 112.04034100669023]
+
+# 后半年
+# [116.9448404225082, 113.28719786538005, 105.68720803057907, 153.7010068043457, 92.25004578671289, 130.3006217082878, 120.31104419168076, 147.31498428245786, 118.28611720881275]
+
+# 全年
+# [277.6060137490649, 158.6823292168699, 91.8976197548802, 196.2573596337263, 130.1339488379918, 220.08832605830045, 161.34486815142225, 136.27587157545778, 132.5281360944362]
+
