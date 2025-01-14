@@ -1,4 +1,4 @@
 #!/bin/sh
 
 set -e
-supervisorctl -c ./op/supervisord.conf shutdown
+supervisorctl -c ./op/supervisord_data.conf shutdown
