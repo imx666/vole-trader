@@ -14,6 +14,7 @@ load_dotenv(dotenv_path)  # 载入环境变量
 
 from module.super_okx import beijing_time
 from module.common_index import get_ATR, Amplitude, compute_market_deal, get_DochianChannel
+from candle.draw_trade_picture import draw_picture
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,7 +52,8 @@ class Account_info:
             print(f"{attr}: {value}")
         print(self.balance + self.hold_amount * self.hold_price)
 
-        return attributes
+        # return attributes
+        return self.balance + self.hold_amount * self.hold_price
 
     def update_info(self, params):
         self.balance = params['balance']
@@ -76,6 +78,7 @@ class Account_info:
 
         if "total_cost" in params:
             self.total_cost = params['total_cost']
+
 
 def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
     amount = account_info.hold_amount
@@ -133,7 +136,14 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
     print(f"balance: {round(account_info.balance, 3)}")
 
 
-def execution_plan(target_stock, long_period_candle):
+def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=False):
+    buy_days = []
+    sell_days = []
+    sell_empty_days = []
+
+    UpDochianChannel = []
+    DownDochianChannel = []
+
     account_info = Account_info()
 
     for day in range(len(long_period_candle)):
@@ -144,16 +154,13 @@ def execution_plan(target_stock, long_period_candle):
         pre_candle = long_period_candle[day - PERIOD:day]
         up_Dochian_price, down_Dochian_price = get_DochianChannel(pre_candle, PERIOD)
         ATR = get_ATR(pre_candle, PERIOD)
-        # print(f"max: {up_Dochian_price}, \nmin: {down_Dochian_price}, \nATR: {ATR}")
 
         today_candle = long_period_candle[day]  # 第一项是时间戳，要移除
         today_timestamp = today_candle[0]
-        # print(f"{day}, today: {beijing_time(today_timestamp)}")
 
         today_candle = [float(item) for item in today_candle]
         today_max_price = today_candle[2]
         today_min_price = today_candle[3]
-        # print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
 
         UpDochianChannel.append([today_timestamp, up_Dochian_price])
         DownDochianChannel.append([today_timestamp, down_Dochian_price])
@@ -161,11 +168,12 @@ def execution_plan(target_stock, long_period_candle):
         position = account_info.long_position
         target_market_price = up_Dochian_price
 
-        print(f"max: {up_Dochian_price}, \nmin: {down_Dochian_price}, \nATR: {ATR}")
-        print(f"{day}, today: {beijing_time(today_timestamp)}")
-        print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
+        # print(f"max: {up_Dochian_price}, \nmin: {down_Dochian_price}, \nATR: {ATR}")
+        # print(f"{day}, today: {beijing_time(today_timestamp)}")
+        # print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
 
         if today_max_price > target_market_price and position == 0:
+            print(f"{day}, today: {beijing_time(today_timestamp)}")
             print("建仓")
 
             flag = 1
@@ -202,11 +210,14 @@ def execution_plan(target_stock, long_period_candle):
                 }
             )
             print(f"balance:{round(account_info.balance, 3)}")
+            print()
 
-        for _ in range(account_info.max_long_position):
+        for i in range(account_info.max_long_position):
             position = account_info.long_position
             target_market_price = round(account_info.open_price + position * 0.5 * ATR, 10)
             if today_max_price > target_market_price and 0 < position <= account_info.max_long_position:
+                if i == 0:
+                    print(f"{day}, today: {beijing_time(today_timestamp)}")
                 print("加仓")
                 flag = 1
                 buy_days.append([today_timestamp, target_market_price])
@@ -217,7 +228,7 @@ def execution_plan(target_stock, long_period_candle):
                 expect_max_cost = account_info.init_balance * 0.3
                 if now_cost > expect_max_cost:
                     print("超预算(减少数量)")
-                    amount = expect_max_cost/target_market_price
+                    amount = expect_max_cost / target_market_price
                     now_cost = expect_max_cost
                 expect_min_cost = account_info.init_balance * 0.17
                 expect_min_cost = account_info.init_balance * 0.24
@@ -240,116 +251,104 @@ def execution_plan(target_stock, long_period_candle):
                     }
                 )
                 print(f"balance:{round(account_info.balance, 3)}")
+                print()
 
-        for _ in range(account_info.max_sell_times):
+        for i in range(account_info.max_sell_times):
             position = account_info.long_position
             sell_time = account_info.sell_times
             target_market_price = round(account_info.open_price + (0.5 * sell_time + 2) * ATR, 10)
             if today_max_price > target_market_price and position > 0:
+                if i == 0:
+                    print(f"{day}, today: {beijing_time(today_timestamp)}")
                 print(f"减仓(+{0.5 * sell_time + 2}N线, 分批止盈)")
                 flag = 1
                 sell_days.append([today_timestamp, target_market_price])
 
                 ratio = 0.3 if sell_time <= 1 else 0.2
+                if sell_time == 2:
+                    ratio = 1
                 print(f"ratio: {ratio}")
                 sell(account_info, target_market_price, ratio=ratio, today_timestamp=today_timestamp)
+                print()
 
         position = account_info.long_position
         if position > 0 and flag == 0:
             # 除数不为零
             hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
             target_market_price = round(hold_average_price - 0.5 * ATR, 10)
-            # target_market_price = round(hold_average_price, 10)
             if today_min_price < target_market_price < today_max_price and position > 0:
-                print("平仓(-0.5N线, 成本)")
-                flag = 1
+                print(f"{day}, today: {beijing_time(today_timestamp)}")
+                print("平仓(成本-0.5N)")
 
                 sell_empty_days.append([today_timestamp, target_market_price])
                 sell(account_info, target_market_price, today_timestamp=today_timestamp)
+                print('\n\n')
+                continue
+
+        position = account_info.long_position
+        if position > 0 and flag == 0:
+            # 除数不为零
+            hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
+            target_market_price = round(hold_average_price * 0.93, 10)
+            if today_min_price < target_market_price < today_max_price and position > 0:
+                print("平仓(成本-7%)")
+
+                sell_empty_days.append([today_timestamp, target_market_price])
+                sell(account_info, target_market_price, today_timestamp=today_timestamp)
+                print('\n\n')
+                continue
+            if today_max_price < target_market_price and position > 0:
+                print("平仓(成本-7+%)")
+
+                sell_empty_days.append([today_timestamp, today_max_price])
+                sell(account_info, today_max_price, today_timestamp=today_timestamp)
+                print('\n\n')
+                continue
 
         position = account_info.long_position
         stop_loss_price = round(account_info.open_price - 0.5 * ATR, 10)
         target_market_price = max(stop_loss_price, down_Dochian_price)
         if today_min_price < target_market_price < today_max_price and position > 0 and flag == 0:
-            flag = 1
             print("平仓(max-0.5N线/唐奇安)")
             print(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
 
             sell_empty_days.append([today_timestamp, target_market_price])
             sell(account_info, target_market_price, today_timestamp=today_timestamp)
+            print('\n\n')
+            continue
 
-        target_market_price = min(stop_loss_price, down_Dochian_price)
-        if today_min_price < target_market_price < today_max_price and position > 0 and flag == 0:
-            print("平仓(min-0.5N线/唐奇安)")
-            print(f"stop_loss: {stop_loss_price}  down:{down_Dochian_price}")
+    hold_market_price = account_info.print_all_info()
 
-            sell_empty_days.append([today_timestamp, target_market_price])
-            sell(account_info, target_market_price, today_timestamp=today_timestamp)
+    if draw:
+        draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day,
+                     UpDochianChannel,
+                     DownDochianChannel, account_info.return_rate_list)
 
-        # if today_min_price < down_Dochian_price:
-        #     print("小于")
-        #     print(position)
-        #     print(flag)
-
-
-        print()
-
-    account_info.print_all_info()
-
-    # print(buy_days)
-    # print(sell_days)
-    # print(sell_empty_days)
-    # print(UpDochianChannel)
-    # print(DownDochianChannel)
-
-    from candle.draw_trade_picture import draw_picture
-
-    draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day, UpDochianChannel,
-                 DownDochianChannel, account_info.return_rate_list)
-
+    return hold_market_price
 
 
 if __name__ == '__main__':
-
-    PERIOD = 3
-    buy_days = []
-    sell_days = []
-    sell_empty_days = []
-
-    UpDochianChannel = []
-    DownDochianChannel = []
-
-    start_day = 0
-    end_day = 180*6
-
-    start_day = 300*6
-    end_day = -1
-
-    # start_day = 0
-    # end_day = -1
-
     os.system("clear")
     target_stock = os.getenv("target_stock")
-
 
     # target_stock = "BTC-USDT"
     # target_stock = "ETH-USDT"
     # target_stock = "DOGE-USDT"
-    # target_stock = "FLOKI-USDT"
-    # target_stock = "OMI-USDT"
+    target_stock = "FLOKI-USDT"
+    target_stock = "OMI-USDT"
     # target_stock = "LUNC-USDT"
-    target_stock = "PEPE-USDT"
-    target_stock = "RACA-USDT"
+    # target_stock = "PEPE-USDT"
 
-    target_stock = "JST-USDT"
-    target_stock = "ZRX-USDT"
-    target_stock = "ZIL-USDT"
-    target_stock = "ORDI-USDT"
+    # target_stock = "RACA-USDT"
+    # target_stock = "JST-USDT"
+    # target_stock = "ZRX-USDT"
+    # target_stock = "ZIL-USDT"
+    # target_stock = "ORDI-USDT"
+
     # target_stock = "BOME-USDT"  # 4H的时长不够
     # target_stock = "ARKM-USDT"  # 4H的时长不够
     # target_stock = "ZRO-USDT"  # 4H的时长不够
     # target_stock = "MEW-USDT"  # 4H的时长不够
-
 
     total_path = os.path.join(BASE_DIR, f"../data/4H/{target_stock}.json")
 
@@ -357,6 +356,17 @@ if __name__ == '__main__':
         long_period_candle = json.load(file)
         print(len(long_period_candle))
 
-    long_period_candle = long_period_candle[start_day:end_day]
-    execution_plan(target_stock, long_period_candle)
+    PERIOD = 3
 
+    # start_day = 0
+    # end_day = 180 * 6
+
+    # start_day = 300*6
+    # end_day = -1
+
+    start_day = 0
+    end_day = -1
+
+    long_period_candle = long_period_candle[start_day:end_day]
+
+    execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=True)
