@@ -1,20 +1,31 @@
 import json
-import os
 import time
 import schedule
+
+import os
+import sys
 from pathlib import Path
 
-from MsgSender.wx_msg import send_wx_info
-from MsgSender.feishu_msg import send_feishu_info
-from monitor.account_monitor import check_state, hold_info
+# 锁定系统运行路径
+project_path = Path(__file__).resolve().parent  # 此脚本的运行"绝对"路径
+dotenv_path = os.path.join(project_path, '../')
+sys.path.append(dotenv_path)
+
+
+# 导入日志配置
 import logging.config
 from utils.logging_config import Logging_dict
 
 logging.config.dictConfig(Logging_dict)
 LOGGING = logging.getLogger("auto_upload_account")
+sys.path.append(dotenv_path)
+
+
+from MsgSender.feishu_msg import send_feishu_info
+from monitor.account_monitor import check_state, hold_info
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-total_path = os.path.join(BASE_DIR, f"./target_stocks.json")
+total_path = os.path.join(BASE_DIR, f"../target_stocks.json")
 with open(total_path, 'r') as file:
     stock_dict = json.load(file)
 
