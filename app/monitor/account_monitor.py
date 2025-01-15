@@ -330,6 +330,7 @@ origin_reset_list = [
     "add_price_list(ideal)",
     "reduce_price_list(ideal)",
     "close_price(ideal)",
+    "close_price(force)",
     "build_price(ideal)",
 ]
 
