@@ -56,3 +56,9 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         LOGGING.info("定时任务已手动停止")
+
+    except Exception as e:
+        e = str(e)
+        LOGGING.error(e)
+        res = send_feishu_info(f"Error: auto_upload_account", e, supreme_auth=True, jerry_mouse=True)
+        LOGGING.info(res)
