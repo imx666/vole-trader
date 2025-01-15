@@ -132,6 +132,7 @@ def close_house(close_price, order_type="limit"):
 
 
 def circle():
+    LOGGING.info(f"{target_stock} 首次启动")
     global execution_cycle
 
     # 计算目标价
@@ -150,8 +151,9 @@ def circle():
                 continue
 
             if pending_order == 999 and long_position > 0:  # 外部介入强制平仓
+                LOGGING.info("外部介入强制平仓")
                 close_house(999, order_type="market")  # 市价全平
-                raise Exception("外部介入强制平仓")
+                raise Exception("外部介入强制平仓成功")
 
             # 获取最新报价
             data_dict = get_real_time_info(target_stock)
@@ -222,7 +224,7 @@ def circle():
                     continue
 
     except KeyboardInterrupt:
-        LOGGING.info(f"{target_stock} 手动终止成功")
+        LOGGING.error(f"{target_stock} 手动终止成功\n\n\n")
 
     except OperationalError as e:
         # (pymysql.err.OperationalError)(2006, "MySQL server has gone away (BrokenPipeError(32, 'Broken pipe'))")
