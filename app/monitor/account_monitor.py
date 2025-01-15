@@ -135,7 +135,8 @@ def final_and_reset(trade_record):
 
     # 对这一轮进行评估
     delta, profit_rate = sqlManager.get(execution_cycle, "delta")  # 虽然需要传编号，但是计算价差是用不着的
-    init_balance = hold_info.get("<init_balance>") + delta
+    init_balance = hold_info.get("<init_balance>")
+    new_init_balance = init_balance + delta
     sqlManager.update_trade_record(
         client_order_id,
         delta=delta,
@@ -143,7 +144,9 @@ def final_and_reset(trade_record):
     )
     side = "赚取" if delta > 0 else "亏损"
     formatted_profit_rate = '{:.2%}'.format(profit_rate)
-    res = send_feishu_info(f"{execution_cycle}", f"平仓完成\n{side}: {delta} USDT\n利润率: {formatted_profit_rate}", supreme_auth=True,
+    formatted_absolute_rate = '{:.2%}'.format(delta/init_balance)
+    report = f"平仓完成\n{side}: {delta} USDT\n相对利润率: {formatted_profit_rate}\n绝对利润率: {formatted_absolute_rate}"
+    res = send_feishu_info(f"{execution_cycle}", report, supreme_auth=True,
                            jerry_mouse=True)
     LOGGING.info(res)
 
@@ -154,7 +157,7 @@ def final_and_reset(trade_record):
         'tradeFlag': 'no-auth',  # 刚平完仓，不应该建仓
         'long_position': 0,
         'sell_times': 0,
-        '<init_balance>': init_balance,
+        '<init_balance>': new_init_balance,
     }
     hold_info.LOGGING = LOGGING
     LOGGING.info(new_info)
