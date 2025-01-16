@@ -132,6 +132,7 @@ def close_house(close_price, order_type="limit"):
 
 
 def circle():
+    LOGGING.info("\n\n\n")
     LOGGING.info(f"{target_stock} 首次启动")
     global execution_cycle
 
@@ -224,7 +225,7 @@ def circle():
                     continue
 
     except KeyboardInterrupt:
-        LOGGING.error(f"{target_stock} 手动终止成功\n\n\n")
+        LOGGING.error(f"{target_stock} 手动终止成功\n\n")
 
     except OperationalError as e:
         # (pymysql.err.OperationalError)(2006, "MySQL server has gone away (BrokenPipeError(32, 'Broken pipe'))")
