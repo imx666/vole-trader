@@ -49,6 +49,9 @@ class Account_info:
         self.make_money_times = 0
         self.lost_money_times = 0
 
+        self.make_money_rate = 0
+        self.lost_money_rate = 0
+
     def print_all_info(self):
         # 获取类的所有属性及其值
         attributes = vars(self)
@@ -138,15 +141,18 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
         print(f"!收益率: {formatted_value}")
         if delta > 0:
             account_info.make_money_times += 1
+            account_info.make_money_rate += delta / total_cost
         else:
             account_info.lost_money_times += 1
+            account_info.lost_money_rate -= delta / total_cost
+
         account_info.return_rate_list.append([today_timestamp, round(delta / total_cost, 4)])
 
     account_info.update_info(new_params)
     print(f"balance: {round(account_info.balance, 3)}")
 
 
-def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path , draw=False):
+def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path, draw=False):
     buy_days = []
     sell_days = []
     sell_empty_days = []
@@ -259,7 +265,8 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
         "收益": hold_market_price,
         "盈利次数": account_info.make_money_times,
         "亏损次数": account_info.lost_money_times,
-        "盈亏比": account_info.make_money_times/account_info.lost_money_times
+        "盈亏比": (account_info.make_money_rate / account_info.make_money_times) / (
+                    account_info.lost_money_rate / account_info.lost_money_times)
     }
     return report_dict
 
@@ -275,7 +282,6 @@ if __name__ == '__main__':
     start_day = 3000
     end_day = 9600
     end_day = 7600
-
 
     # target_stock = "BTC-USDT"
     # target_stock = "LUNC-USDT"
