@@ -95,4 +95,9 @@ for item in sorted_data:
     #     print(f"{chinese_key}: {value}")
     # print()
 
-print(target_small_market)
+target_small_market2 = [item+"-USDT" for item in target_small_market]
+print(target_small_market2)
+
+json_data = json.dumps(target_small_market)
+with open('market_monitor.json', 'w', encoding='utf-8') as f:
+    f.write(json_data)
