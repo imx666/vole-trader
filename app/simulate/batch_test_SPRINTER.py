@@ -40,6 +40,10 @@ target_stock_li = [
     "ZRO-USDT"
 ]
 
+with open('market_monitor.json', 'r') as file:
+    target_stock_li = json.load(file)
+
+# target_stock_li = target_stock_li[:20]
 PERIOD = 3
 PERIOD_up = 6
 PERIOD_down = 3
@@ -50,21 +54,29 @@ end_day = 7600
 
 final_balance_li = []
 for target_stock in target_stock_li:
-    total_path = os.path.join(BASE_DIR, f"../data/15m/{target_stock}.json")
-    with open(total_path, 'r') as file:
-        long_period_candle = json.load(file)
-        print(len(long_period_candle))
+    try:
+        total_path = os.path.join(BASE_DIR, f"../data/15m/{target_stock}.json")
+        with open(total_path, 'r') as file:
+            long_period_candle = json.load(file)
+            print(len(long_period_candle))
 
-    long_period_candle = long_period_candle[start_day:end_day]
-    report_dict = execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path)
+        long_period_candle = long_period_candle[start_day:end_day]
+        report_dict = execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path)
 
-    final_balance_li.append(report_dict)
+        final_balance_li.append(report_dict)
+    except Exception as e:
+        print("error",e)
+        continue
 
 print("\n\n")
+sb_li = []
 for report_dict in final_balance_li:
     for attr, value in report_dict.items():
         print(f"{attr}: {value}")
+        if attr == "收益":
+            sb_li.append(value)
     print()
 
-
+print('-'*30)
+print(sum(sb_li)/len(sb_li))
 
