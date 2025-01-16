@@ -14,6 +14,7 @@ load_dotenv(dotenv_path)  # 载入环境变量
 
 from module.super_okx import beijing_time
 from module.common_index import get_ATR, Amplitude, compute_market_deal
+from candle.draw_trade_picture import draw_picture
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,6 +46,9 @@ class Account_info:
 
         self.return_rate_list = []
 
+        self.make_money_times = 0
+        self.lost_money_times = 0
+
     def print_all_info(self):
         # 获取类的所有属性及其值
         attributes = vars(self)
@@ -54,7 +58,8 @@ class Account_info:
             print(f"{attr}: {value}")
         print(self.balance + self.hold_amount * self.hold_price)
 
-        return attributes
+        # return attributes
+        return self.balance + self.hold_amount * self.hold_price
 
     def update_info(self, params):
         self.balance = params['balance']
@@ -131,22 +136,27 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
         formatted_value = '{:.2%}'.format(delta / total_cost)
         print(f"{round(total_increase, 3)}, {round(total_cost, 3)}")
         print(f"!收益率: {formatted_value}")
+        if delta > 0:
+            account_info.make_money_times += 1
+        else:
+            account_info.lost_money_times += 1
         account_info.return_rate_list.append([today_timestamp, round(delta / total_cost, 4)])
 
     account_info.update_info(new_params)
     print(f"balance: {round(account_info.balance, 3)}")
 
 
-def execution_plan(target_stock, long_period_candle):
+def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path , draw=False):
+    buy_days = []
+    sell_days = []
+    sell_empty_days = []
+
     account_info = Account_info()
     close_price = 0
 
     for day in range(len(long_period_candle)):
         if day < PERIOD:
             continue
-
-        # pre_candle = long_period_candle[day - PERIOD:day]
-        # ATR = get_ATR(pre_candle, PERIOD)
 
         today_candle = long_period_candle[day]
         today_timestamp = today_candle[0]
@@ -176,7 +186,6 @@ def execution_plan(target_stock, long_period_candle):
                     print("#" * 50)
 
             buy_days.append([today_timestamp, target_market_price])
-            # close_price = (target_market_price + float(pre_candle[0][1])) / 2
             close_price = target_market_price * 0.95
             print(pre_pre, pre, pre / pre_pre)
 
@@ -239,29 +248,34 @@ def execution_plan(target_stock, long_period_candle):
             print()
             continue
 
-    account_info.print_all_info()
+    hold_market_price = account_info.print_all_info()
 
-    from candle.draw_trade_picture import draw_picture
+    if draw:
+        draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day,
+                     return_rate_list=account_info.return_rate_list)
 
-    draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day,
-                 return_rate_list=account_info.return_rate_list)
+    report_dict = {
+        "标的": target_stock,
+        "收益": hold_market_price,
+        "盈利次数": account_info.make_money_times,
+        "亏损次数": account_info.lost_money_times,
+        "盈亏比": account_info.make_money_times/account_info.lost_money_times
+    }
+    return report_dict
 
 
 if __name__ == '__main__':
+    os.system("clear")
+    target_stock = os.getenv("target_stock")
+
     PERIOD = 3
     PERIOD_up = 6
     PERIOD_down = 3
-
-    buy_days = []
-    sell_days = []
-    sell_empty_days = []
 
     start_day = 3000
     end_day = 9600
     end_day = 7600
 
-    os.system("clear")
-    target_stock = os.getenv("target_stock")
 
     # target_stock = "BTC-USDT"
     # target_stock = "LUNC-USDT"
@@ -273,16 +287,13 @@ if __name__ == '__main__':
 
     target_stock = "JST-USDT"  # 117
     target_stock = "ZRX-USDT"  # 95
-    target_stock = "ZIL-USDT"
+    target_stock = "ZIL-USDT"  # 115
     # target_stock = "BOME-USDT"  # 表现很不好
     # target_stock = "ARKM-USDT"  # 表现很不好
     # target_stock = "ORDI-USDT"  # 119
-    # target_stock = "ZRO-USDT"  # 124
+    target_stock = "ZRO-USDT"  # 124
     # target_stock = "MEW-USDT"  # 116
 
-    # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}.json")
-    # total_path = os.path.join(BASE_DIR, f"./data/{target_stock}-longtest.json")
-    # total_path = os.path.join(BASE_DIR, f"./data/1H/{target_stock}.json")
     total_path = os.path.join(BASE_DIR, f"../data/15m/{target_stock}.json")
 
     with open(total_path, 'r') as file:
@@ -290,4 +301,4 @@ if __name__ == '__main__':
         print("k线数量: ", len(long_period_candle))
 
     long_period_candle = long_period_candle[start_day:end_day]
-    execution_plan(target_stock, long_period_candle)
+    execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path, draw=True)
