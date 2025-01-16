@@ -19,7 +19,7 @@ from candle.draw_trade_picture import draw_picture
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# import redis
+DEAL_RATE = 0.0005
 
 
 class Account_info:
@@ -100,6 +100,8 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
     # 部分卖出
     position = account_info.long_position
     receive_money = amount * market_price
+    receive_money = receive_money * (1 - DEAL_RATE)
+
     print(f"amount: {amount}, price: {market_price}")
 
     new_params = {
@@ -183,6 +185,9 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
             pre = compute_market_deal(pre_candle)
             if pre / pre_pre < 0.5:
                 continue
+            
+            # if sum(li) - PERIOD_up < 0.01:
+            #     continue
 
             print(f"\n\n\n\n{day}, today: {beijing_time(today_timestamp)}")
             print("建仓")
@@ -192,7 +197,7 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
                     print("#" * 50)
 
             buy_days.append([today_timestamp, target_market_price])
-            close_price = target_market_price * 0.95
+            close_price = target_market_price * 0.97
             print(pre_pre, pre, pre / pre_pre)
 
             # amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
@@ -211,6 +216,7 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
             #     total_cost = expect_min_cost
 
             amount = round(account_info.init_balance * 0.99 / target_market_price, 8)
+            amount = amount * (1 - DEAL_RATE)
             total_cost = amount * target_market_price
 
             print(f"amount: {amount}, price: {target_market_price}")
