@@ -70,13 +70,20 @@ for target_stock in target_stock_li:
 
 print("\n\n")
 sb_li = []
+win_times, lose_times = 0, 0
 for report_dict in final_balance_li:
     for attr, value in report_dict.items():
         print(f"{attr}: {value}")
         if attr == "收益":
             sb_li.append(value)
+        if attr == "盈利次数":
+            win_times += value
+        if attr == "亏损次数":
+            lose_times += value
     print()
 
 print('-'*30)
+print("币种个数",len(sb_li))
 print(sum(sb_li)/len(sb_li))
-
+print("盈利次数", win_times)
+print("亏损次数", lose_times)
