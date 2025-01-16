@@ -20,7 +20,6 @@ from simulate.simulate_TURTLE import execution_plan
 os.system("clear")
 os.system("clear")
 time.sleep(2)
-target_stock = os.getenv("target_stock")
 
 # target_stock = "BTC-USDT"
 # target_stock = "ETH-USDT"
