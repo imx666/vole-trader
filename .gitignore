@@ -11,8 +11,10 @@
 /app/__pycache__
 /app/candle/__pycache__
 /app/monitor/__pycache__
-tools/leetcode.py
-tools/draft.py
+tests/leetcode.py
+tests/draft.py
 
 app/utils/__pycache__
-app/utils/__pycache__
+app/error_test.py
+/app/other
+*.pyc
