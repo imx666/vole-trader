@@ -172,6 +172,13 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
         formatted_value = '{:.2%}'.format(delta / total_cost)
         print(f"{round(total_increase, 3)}, {round(total_cost, 3)}")
         print(f"!收益率: {formatted_value}")
+        if delta > 0:
+            account_info.make_money_times += 1
+            account_info.make_money_rate += delta / total_cost
+        else:
+            account_info.lost_money_times += 1
+            account_info.lost_money_rate -= delta / total_cost
+
         account_info.return_rate_list.append([today_timestamp, round(delta / total_cost, 4)])
 
     account_info.update_info(new_params)
@@ -388,6 +395,8 @@ if __name__ == '__main__':
     # target_stock = "DOGE-USDT"
     target_stock = "FLOKI-USDT"
     target_stock = "OMI-USDT"
+    target_stock = "BICO-USDT"
+    target_stock = "SKL-USDT"
     # target_stock = "LUNC-USDT"
     # target_stock = "PEPE-USDT"
 
@@ -421,4 +430,4 @@ if __name__ == '__main__':
 
     long_period_candle = long_period_candle[start_day:end_day]
 
-    execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=True)
+    execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=0)
