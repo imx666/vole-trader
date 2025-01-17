@@ -46,6 +46,12 @@ class Account_info:
 
         self.return_rate_list = []
 
+        self.make_money_times = 0
+        self.lost_money_times = 0
+
+        self.make_money_rate = 0
+        self.lost_money_rate = 0
+
     def print_all_info(self):
         # 获取类的所有属性及其值
         attributes = vars(self)
@@ -81,6 +87,37 @@ class Account_info:
 
         if "total_cost" in params:
             self.total_cost = params['total_cost']
+def buy(account_info, target_market_price, position, ATR, today_timestamp=None):
+    amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
+    amount = amount * (1 - DEAL_RATE)
+    total_cost = amount * target_market_price
+
+    expect_max_cost = account_info.init_balance * 0.3
+    if total_cost > expect_max_cost:
+        print("超预算(减少数量)")
+        amount = expect_max_cost / target_market_price
+        total_cost = expect_max_cost
+
+    expect_min_cost = account_info.init_balance * 0.24
+    if total_cost < expect_min_cost:
+        print("不足预算(增加数量)")
+        amount = expect_min_cost / target_market_price
+        total_cost = expect_min_cost
+    print(f"amount: {amount}, price: {target_market_price}")
+    print(f"total_cost: {round(total_cost, 3)}")
+
+    account_info.update_info(
+        {
+            "balance": account_info.balance - total_cost,
+            "long_position": position + 1,
+            "hold_price": target_market_price,
+            "hold_amount": account_info.hold_amount + amount,
+            "total_cost": account_info.total_cost + total_cost,
+            "max_hold_amount": account_info.hold_amount + amount,
+        }
+    )
+    print(f"balance:{round(account_info.balance, 3)}")
+    buy_days.append([today_timestamp, target_market_price])
 
 
 def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
