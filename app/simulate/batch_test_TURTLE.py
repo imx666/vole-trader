@@ -29,14 +29,17 @@ time.sleep(2)
 target_stock_li = [
     "PEPE-USDT",
     "FLOKI-USDT",
-    "LUNC-USDT",
-    "OMI-USDT",
-    "ZRX-USDT",
-    "RACA-USDT",
-    "JST-USDT",
-    "ZIL-USDT",
-    "ORDI-USDT"
+    # "LUNC-USDT",
+    # "OMI-USDT",
+    # "ZRX-USDT",
+    # "RACA-USDT",
+    # "JST-USDT",
+    # "ZIL-USDT",
+    # "ORDI-USDT"
 ]
+
+with open('market_monitor.json', 'r') as file:
+    target_stock_li = json.load(file)
 
 PERIOD = 3
 
@@ -51,16 +54,39 @@ end_day = -1
 
 final_balance_li = []
 for target_stock in target_stock_li:
-    total_path = os.path.join(BASE_DIR, f"../data/4H/{target_stock}.json")
-    with open(total_path, 'r') as file:
-        long_period_candle = json.load(file)
-        print(len(long_period_candle))
+    try:
+        total_path = os.path.join(BASE_DIR, f"../data/4H/{target_stock}.json")
+        with open(total_path, 'r') as file:
+            long_period_candle = json.load(file)
+            print(len(long_period_candle))
 
-    long_period_candle = long_period_candle[start_day:end_day]
-    hold_market_price = execution_plan(PERIOD, target_stock, long_period_candle, total_path)
-    final_balance_li.append(hold_market_price)
+        long_period_candle = long_period_candle[start_day:end_day]
+        report_dict = execution_plan(PERIOD, target_stock, long_period_candle, total_path)
 
-print(final_balance_li)
+        final_balance_li.append(report_dict)
+    except Exception as e:
+        print("error",e)
+        continue
+
+print("\n\n")
+sb_li = []
+win_times, lose_times = 0, 0
+for report_dict in final_balance_li:
+    for attr, value in report_dict.items():
+        print(f"{attr}: {value}")
+        if attr == "收益":
+            sb_li.append(value)
+        if attr == "盈利次数":
+            win_times += value
+        if attr == "亏损次数":
+            lose_times += value
+    print()
+
+print('-'*30)
+print("币种个数",len(sb_li))
+print(sum(sb_li)/len(sb_li))
+print("盈利次数", win_times)
+print("亏损次数", lose_times)
 
 # 前半年
 # [237.38133259490223, 140.07085975561776, 86.95257647125578, 127.68773773510372, 141.06654183715568, 168.90808711706413, 134.1064482136139, 92.50645596710571, 112.04034100669023]
