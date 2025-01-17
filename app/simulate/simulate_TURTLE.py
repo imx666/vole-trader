@@ -332,8 +332,15 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
                      UpDochianChannel,
                      DownDochianChannel, account_info.return_rate_list)
 
-    return hold_market_price
-
+    report_dict = {
+        "标的": target_stock,
+        "收益": hold_market_price,
+        "盈利次数": account_info.make_money_times,
+        "亏损次数": account_info.lost_money_times,
+        "盈亏比": (account_info.make_money_rate / account_info.make_money_times) / (
+                    account_info.lost_money_rate / account_info.lost_money_times)
+    }
+    return report_dict
 
 if __name__ == '__main__':
     os.system("clear")
