@@ -19,7 +19,8 @@ from candle.draw_trade_picture import draw_picture
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-DEAL_RATE = 0.0005
+DEAL_RATE = 0.0005  # 交易手续费
+STOP_LOSS_RATE = 0.03  # 止损率
 
 
 class Account_info:
@@ -197,7 +198,7 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
                     print("#" * 50)
 
             buy_days.append([today_timestamp, target_market_price])
-            close_price = target_market_price * 0.97
+            close_price = target_market_price * (1 - STOP_LOSS_RATE)
             print(pre_pre, pre, pre / pre_pre)
 
             # amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)

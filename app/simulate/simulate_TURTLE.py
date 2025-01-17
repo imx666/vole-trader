@@ -18,6 +18,9 @@ from candle.draw_trade_picture import draw_picture
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+DEAL_RATE = 0.0005  # 交易手续费
+STOP_LOSS_RATE = 0.07  # 止损率
+
 
 class Account_info:
     def __init__(self):
@@ -91,6 +94,8 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
     # 部分卖出
     position = account_info.long_position
     receive_money = amount * market_price
+    receive_money = receive_money * (1 - DEAL_RATE)
+
     print(f"amount: {amount}, price: {market_price}")
 
     new_params = {
@@ -180,6 +185,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
             buy_days.append([today_timestamp, target_market_price])
 
             amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
+            amount = amount * (1 - DEAL_RATE)
             total_cost = amount * target_market_price
 
             expect_max_cost = account_info.init_balance * 0.3
@@ -223,6 +229,8 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
                 buy_days.append([today_timestamp, target_market_price])
 
                 amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
+                amount = amount * (1 - DEAL_RATE)
+
                 now_cost = amount * target_market_price
                 expect_max_cost = account_info.init_balance * 0.23
                 expect_max_cost = account_info.init_balance * 0.3
@@ -289,7 +297,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
         if position > 0 and flag == 0:
             # 除数不为零
             hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
-            target_market_price = round(hold_average_price * 0.93, 10)
+            target_market_price = round(hold_average_price * (1-STOP_LOSS_RATE), 10)
             if today_min_price < target_market_price < today_max_price and position > 0:
                 print("平仓(成本-7%)")
 
