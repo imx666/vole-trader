@@ -334,9 +334,13 @@ def trade_auth(side=None, reset=False):
         return
 
     tradeFlag = hold_info.newest("tradeFlag")
+    execution_cycle = hold_info.newest("execution_cycle")
+    sell_times = sqlManager.get(execution_cycle, "sell_times")
+    if sell_times == hold_info.get("<max_sell_times>"):
+        LOGGING.info(f"<{side}>: 平仓已完成")
+        return False
 
     if tradeFlag != "build" and side == "close":
-        execution_cycle = hold_info.newest("execution_cycle")
         if execution_cycle == "ready":
             LOGGING.info(f"<{side}>: 平仓已完成")
             return False
