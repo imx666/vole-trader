@@ -12,3 +12,5 @@ pytz
 sqlalchemy
 pandas
 pymysql
+matplotlib
+mplfinance
