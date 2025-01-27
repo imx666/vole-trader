@@ -87,7 +87,7 @@ class Account_info:
 
         if "total_cost" in params:
             self.total_cost = params['total_cost']
-def buy(account_info, target_market_price, position, ATR, today_timestamp=None):
+def buy(account_info, target_market_price, ATR, build=False):
     amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
     amount = amount * (1 - DEAL_RATE)
     total_cost = amount * target_market_price
@@ -106,18 +106,34 @@ def buy(account_info, target_market_price, position, ATR, today_timestamp=None):
     print(f"amount: {amount}, price: {target_market_price}")
     print(f"total_cost: {round(total_cost, 3)}")
 
-    account_info.update_info(
-        {
-            "balance": account_info.balance - total_cost,
-            "long_position": position + 1,
-            "hold_price": target_market_price,
-            "hold_amount": account_info.hold_amount + amount,
-            "total_cost": account_info.total_cost + total_cost,
-            "max_hold_amount": account_info.hold_amount + amount,
-        }
-    )
+    position = account_info.long_position
+
+    if build:
+        account_info.update_info(
+                {
+                    "balance": account_info.balance - total_cost,
+                    "init_balance": account_info.balance,
+                    "long_position": position + 1,
+                    "hold_amount": account_info.hold_amount + amount,
+                    "max_hold_amount": account_info.hold_amount + amount,
+                    "hold_price": target_market_price,
+                    "total_cost": account_info.total_cost + total_cost,
+                    "open_price": target_market_price,
+                    "total_ratio": 1.0
+                }
+            )
+    else:
+        account_info.update_info(
+            {
+                "balance": account_info.balance - total_cost,
+                "long_position": position + 1,
+                "hold_price": target_market_price,
+                "hold_amount": account_info.hold_amount + amount,
+                "total_cost": account_info.total_cost + total_cost,
+                "max_hold_amount": account_info.hold_amount + amount,
+            }
+        )
     print(f"balance:{round(account_info.balance, 3)}")
-    buy_days.append([today_timestamp, target_market_price])
 
 
 def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
@@ -238,38 +254,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
             flag = 1
             buy_days.append([today_timestamp, target_market_price])
 
-            amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
-            amount = amount * (1 - DEAL_RATE)
-            total_cost = amount * target_market_price
-
-            expect_max_cost = account_info.init_balance * 0.3
-            if total_cost > expect_max_cost:
-                print("超预算(减少数量)")
-                amount = expect_max_cost / target_market_price
-                total_cost = expect_max_cost
-
-            expect_min_cost = account_info.init_balance * 0.24
-            if total_cost < expect_min_cost:
-                print("不足预算(增加数量)")
-                amount = expect_min_cost / target_market_price
-                total_cost = expect_min_cost
-            print(f"amount: {amount}, price: {target_market_price}")
-            print(f"total_cost: {round(total_cost, 3)}")
-
-            account_info.update_info(
-                {
-                    "balance": account_info.balance - total_cost,
-                    "init_balance": account_info.balance,
-                    "long_position": position + 1,
-                    "hold_amount": account_info.hold_amount + amount,
-                    "max_hold_amount": account_info.hold_amount + amount,
-                    "hold_price": target_market_price,
-                    "total_cost": account_info.total_cost + total_cost,
-                    "open_price": target_market_price,
-                    "total_ratio": 1.0
-                }
-            )
-            print(f"balance:{round(account_info.balance, 3)}")
+            buy(account_info, target_market_price, ATR, build=True)
             print()
 
         for i in range(account_info.max_long_position):
@@ -282,37 +267,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
                 flag = 1
                 buy_days.append([today_timestamp, target_market_price])
 
-                amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
-                amount = amount * (1 - DEAL_RATE)
-
-                now_cost = amount * target_market_price
-                expect_max_cost = account_info.init_balance * 0.23
-                expect_max_cost = account_info.init_balance * 0.3
-                if now_cost > expect_max_cost:
-                    print("超预算(减少数量)")
-                    amount = expect_max_cost / target_market_price
-                    now_cost = expect_max_cost
-                expect_min_cost = account_info.init_balance * 0.17
-                expect_min_cost = account_info.init_balance * 0.24
-                if now_cost < expect_min_cost:
-                    print("不足预算(增加数量)")
-                    amount = expect_min_cost / target_market_price
-                    now_cost = expect_min_cost
-
-                print(f"amount: {amount}, price: {target_market_price}")
-                print(f"total_cost: {round(now_cost, 3)}")
-
-                account_info.update_info(
-                    {
-                        "balance": account_info.balance - now_cost,
-                        "long_position": position + 1,
-                        "hold_price": target_market_price,
-                        "hold_amount": account_info.hold_amount + amount,
-                        "total_cost": account_info.total_cost + now_cost,
-                        "max_hold_amount": account_info.hold_amount + amount,
-                    }
-                )
-                print(f"balance:{round(account_info.balance, 3)}")
+                buy(account_info, target_market_price, ATR)
                 print()
 
         for i in range(account_info.max_sell_times):
@@ -324,12 +279,13 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
                     print(f"{day}, today: {beijing_time(today_timestamp)}")
                 print(f"减仓(+{0.5 * sell_time + 2}N线, 分批止盈)")
                 flag = 1
-                sell_days.append([today_timestamp, target_market_price])
 
                 ratio = 0.3 if sell_time <= 1 else 0.2
                 if sell_time == 2:
                     ratio = 1
                 print(f"ratio: {ratio}")
+
+                sell_days.append([today_timestamp, target_market_price])
                 sell(account_info, target_market_price, ratio=ratio, today_timestamp=today_timestamp)
                 print()
 
@@ -359,6 +315,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
                 sell(account_info, target_market_price, today_timestamp=today_timestamp)
                 print('\n\n')
                 continue
+
             if today_max_price < target_market_price and position > 0:
                 print("平仓(成本-7+%)")
 
@@ -414,7 +371,7 @@ if __name__ == '__main__':
     target_stock = "JST-USDT"
     target_stock = "ZRX-USDT"
     target_stock = "ZIL-USDT"
-    # target_stock = "ORDI-USDT"
+    target_stock = "ORDI-USDT"
 
     # target_stock = "BOME-USDT"  # 4H的时长不够
     # target_stock = "ARKM-USDT"  # 4H的时长不够
@@ -432,13 +389,13 @@ if __name__ == '__main__':
     # start_day = 0
     # end_day = 180 * 6
 
-    # start_day = 300*6
-    # end_day = -1
-
-    start_day = 0
+    start_day = 180*6
     end_day = -1
+
+    # start_day = 0
+    # end_day = -1
 
     long_period_candle = long_period_candle[start_day:end_day]
 
-    execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=1)
-    # execution_plan(PERIOD, target_stock, long_period_candle, total_path)
+    # execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=1)
+    execution_plan(PERIOD, target_stock, long_period_candle, total_path)
