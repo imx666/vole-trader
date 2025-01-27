@@ -196,10 +196,11 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
     account_info = Account_info()
 
     for day in range(len(long_period_candle)):
-        if day < PERIOD:
+        if day < 2 * PERIOD:
             continue
 
         flag = 0
+        pre_pre_candle = long_period_candle[day - PERIOD * 2:day - PERIOD]
         pre_candle = long_period_candle[day - PERIOD:day]
         up_Dochian_price, down_Dochian_price = get_DochianChannel(pre_candle, PERIOD)
         ATR = get_ATR(pre_candle, PERIOD)
@@ -222,6 +223,15 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
         # print(f"t_max: {today_max_price}, \nt_min: {today_min_price}")
 
         if today_max_price > target_market_price and position == 0:
+            # auth, li = Amplitude(pre_candle[:3], "up")
+            # if auth:
+            #     continue
+
+            pre_pre = compute_market_deal(pre_pre_candle)
+            pre = compute_market_deal(pre_candle)
+            if pre / pre_pre < 0.8:
+                continue
+
             print(f"{day}, today: {beijing_time(today_timestamp)}")
             print("建仓")
 
@@ -394,16 +404,16 @@ if __name__ == '__main__':
     # target_stock = "ETH-USDT"
     # target_stock = "DOGE-USDT"
     target_stock = "FLOKI-USDT"
-    target_stock = "OMI-USDT"
-    target_stock = "BICO-USDT"
-    target_stock = "SKL-USDT"
+    # target_stock = "OMI-USDT"
+    # target_stock = "BICO-USDT"
+    # target_stock = "SKL-USDT"
     # target_stock = "LUNC-USDT"
     # target_stock = "PEPE-USDT"
 
     # target_stock = "RACA-USDT"
-    # target_stock = "JST-USDT"
-    # target_stock = "ZRX-USDT"
-    # target_stock = "ZIL-USDT"
+    target_stock = "JST-USDT"
+    target_stock = "ZRX-USDT"
+    target_stock = "ZIL-USDT"
     # target_stock = "ORDI-USDT"
 
     # target_stock = "BOME-USDT"  # 4H的时长不够
@@ -430,4 +440,5 @@ if __name__ == '__main__':
 
     long_period_candle = long_period_candle[start_day:end_day]
 
-    execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=0)
+    execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=1)
+    # execution_plan(PERIOD, target_stock, long_period_candle, total_path)
