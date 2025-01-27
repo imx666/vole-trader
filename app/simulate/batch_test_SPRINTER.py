@@ -41,7 +41,9 @@ target_stock_li = [
 ]
 
 with open('market_monitor.json', 'r') as file:
-    target_stock_li = json.load(file)
+    target_stock_dict = json.load(file)
+
+target_stock_li = list(target_stock_dict.keys())
 
 # target_stock_li = target_stock_li[:20]
 PERIOD = 3
