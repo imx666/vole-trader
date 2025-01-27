@@ -71,7 +71,8 @@ pass_str_li = [
     "dayLow", "fullName", "fullNameSeo", "quoteCurrencySymbol", "volume"
 ]
 
-target_small_market = []
+target_market_dict = {}
+target_small_market = []  # 现在这个列表将存储字典而不是单个字符串
 sorted_data = sorted(data_list, key=lambda x: x['marketCap'], reverse=True)
 # sorted_data = sorted(data_list, key=lambda x: float(x['changePercentage'].replace('%', '')), reverse=True)
 
@@ -81,23 +82,26 @@ for item in sorted_data:
     if marketCap == 0 or symbol == "":
         continue
     if 10*10 ** 8 > marketCap > 1*10 ** 8:
-        target_small_market.append(item["project"])
+        # 创建新的字典，包含所需字段
+        market_info = {
+            "symbol": item["symbol"],
+            "marketCap": item["marketCap"],
+            "last": item["last"],
+            "changePercentage": item["changePercentage"]
+        }
+        target_market_dict[f"{item['project']}-USDT"] = market_info
+        # target_small_market.append(market_info)
     print(item["project"])
     print(item["symbol"])
     print(item["marketCap"])
     print(item["last"])
     print(item["changePercentage"])
     print()
-    # for key, value in item.items():
-    #     if key in pass_str_li:
-    #         continue
-    #     chinese_key = key_translation.get(key, key)  # 如果没有找到对应的中文键，则使用原键
-    #     print(f"{chinese_key}: {value}")
-    # print()
 
-target_small_market2 = [item+"-USDT" for item in target_small_market]
-print(target_small_market2)
 
-json_data = json.dumps(target_small_market2)
+# target_small_market2 = [item["project"]+"-USDT" for item in target_small_market]
+# print(target_small_market2)
+
+json_data = json.dumps(target_market_dict)
 with open('market_monitor.json', 'w', encoding='utf-8') as f:
     f.write(json_data)
