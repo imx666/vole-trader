@@ -80,7 +80,7 @@ for item in sorted_data:
     symbol = item['symbol']
     if marketCap == 0 or symbol == "":
         continue
-    if 5*10 ** 8 > marketCap > 2*10 ** 8:
+    if 10*10 ** 8 > marketCap > 1*10 ** 8:
         target_small_market.append(item["project"])
     print(item["project"])
     print(item["symbol"])

@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
 
     max_day = 100
-    # max_day = 22
+    max_day = 22
 
     for target_stock in target_stock_li:
         try:
@@ -50,8 +50,8 @@ if __name__ == '__main__':
             for i in range(max_day):
                 print(f"第: {i}次")
                 # period = "1H"
-                # period = "4H"
-                period = "15m"
+                period = "4H"
+                # period = "15m"
                 total_candle = genius_trader.stock_candle(target_stock, after=pre_day, period=period)
                 # total_candle.reverse()  # 由于时间，倒序
                 pre_day = total_candle[-1][0]
