@@ -87,6 +87,8 @@ class Account_info:
 
         if "total_cost" in params:
             self.total_cost = params['total_cost']
+
+
 def buy(account_info, target_market_price, ATR, build=False):
     amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
     amount = amount * (1 - DEAL_RATE)
@@ -110,18 +112,18 @@ def buy(account_info, target_market_price, ATR, build=False):
 
     if build:
         account_info.update_info(
-                {
-                    "balance": account_info.balance - total_cost,
-                    "init_balance": account_info.balance,
-                    "long_position": position + 1,
-                    "hold_amount": account_info.hold_amount + amount,
-                    "max_hold_amount": account_info.hold_amount + amount,
-                    "hold_price": target_market_price,
-                    "total_cost": account_info.total_cost + total_cost,
-                    "open_price": target_market_price,
-                    "total_ratio": 1.0
-                }
-            )
+            {
+                "balance": account_info.balance - total_cost,
+                "init_balance": account_info.balance,
+                "long_position": position + 1,
+                "hold_amount": account_info.hold_amount + amount,
+                "max_hold_amount": account_info.hold_amount + amount,
+                "hold_price": target_market_price,
+                "total_cost": account_info.total_cost + total_cost,
+                "open_price": target_market_price,
+                "total_ratio": 1.0
+            }
+        )
     else:
         account_info.update_info(
             {
@@ -208,7 +210,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
     target_stock_info = target_stock_dict[target_stock]
     newest_price = target_stock_info["last"]
     market_cap = target_stock_info["marketCap"]
-    
+
     buy_days = []
     sell_days = []
     sell_empty_days = []
@@ -250,11 +252,10 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
             # if auth:
             #     continue
 
-            previous_market_cap = market_cap*today_min_price/newest_price
-            
-            # 市值小于1亿，不建仓
-            if previous_market_cap < 0.1*10**8:
-                print(f"市值小于1亿，不建仓,market_cap:{previous_market_cap}")
+            # 市值小于0.1亿，不建仓
+            previous_market_cap = market_cap * today_min_price / newest_price
+            if previous_market_cap < 0.1 * 10 ** 8:
+                print(f"市值小于0.1亿，不建仓,market_cap:{previous_market_cap}")
                 continue
 
             # # 市值大于10亿，不建仓
@@ -326,7 +327,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
         if position > 0 and flag == 0:
             # 除数不为零
             hold_average_price = (account_info.init_balance - account_info.balance) / account_info.hold_amount
-            target_market_price = round(hold_average_price * (1-STOP_LOSS_RATE), 10)
+            target_market_price = round(hold_average_price * (1 - STOP_LOSS_RATE), 10)
             if today_min_price < target_market_price < today_max_price and position > 0:
                 print("平仓(成本-7%)")
 
@@ -368,9 +369,10 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
         "盈利次数": account_info.make_money_times,
         "亏损次数": account_info.lost_money_times,
         "盈亏比": (account_info.make_money_rate / account_info.make_money_times) / (
-                    account_info.lost_money_rate / account_info.lost_money_times)
+                account_info.lost_money_rate / account_info.lost_money_times)
     }
     return report_dict
+
 
 if __name__ == '__main__':
     os.system("clear")
@@ -408,7 +410,7 @@ if __name__ == '__main__':
     # start_day = 0
     # end_day = 180 * 6
 
-    start_day = 180*6
+    start_day = 180 * 6
     end_day = -1
 
     start_day = 0
