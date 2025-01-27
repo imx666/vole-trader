@@ -33,15 +33,16 @@ if __name__ == '__main__':
     from utils.files import find_or_create_doc
 
     with open('market_monitor.json', 'r') as file:
-        target_stock_li = json.load(file)
+        target_stock_dict = json.load(file)
 
+    target_stock_li = list(target_stock_dict.keys())
 
     genius_trader = GeniusTrader()
 
 
 
     max_day = 100
-    max_day = 22
+    # max_day = 22
 
     for target_stock in target_stock_li:
         try:
@@ -50,8 +51,8 @@ if __name__ == '__main__':
             for i in range(max_day):
                 print(f"第: {i}次")
                 # period = "1H"
-                period = "4H"
-                # period = "15m"
+                # period = "4H"
+                period = "15m"
                 total_candle = genius_trader.stock_candle(target_stock, after=pre_day, period=period)
                 # total_candle.reverse()  # 由于时间，倒序
                 pre_day = total_candle[-1][0]
@@ -68,6 +69,7 @@ if __name__ == '__main__':
                 f.write(json_data)
 
             print(f"{target_stock} 写入完成")
+            time.sleep(10)
         except Exception as e:
             print("error",e)
             continue
