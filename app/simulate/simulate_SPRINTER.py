@@ -156,6 +156,13 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
 
 
 def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path, draw=False):
+    with open('market_monitor.json', 'r') as file:
+        target_stock_dict = json.load(file)
+
+    target_stock_info = target_stock_dict[target_stock]
+    newest_price = target_stock_info["last"]
+    market_cap = target_stock_info["marketCap"]
+
     buy_days = []
     sell_days = []
     sell_empty_days = []
@@ -182,6 +189,13 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
         target_market_price = open_price
         auth, li = Amplitude(pre_candle, "up")
         if auth and position == 0:
+
+            # 市值小于0.1亿，不建仓
+            previous_market_cap = market_cap * today_min_price / newest_price
+            if previous_market_cap < 0.1 * 10 ** 8:
+                print(f"市值小于0.1亿，不建仓,market_cap:{previous_market_cap}")
+                continue
+
             pre_pre = compute_market_deal(pre_pre_candle)
             pre = compute_market_deal(pre_candle)
             if pre / pre_pre < 0.5:
@@ -289,6 +303,7 @@ if __name__ == '__main__':
     start_day = 3000
     end_day = 9600
     end_day = 7600
+    end_day = 60 * 96
 
     # target_stock = "BTC-USDT"
     # target_stock = "LUNC-USDT"
@@ -304,7 +319,7 @@ if __name__ == '__main__':
     # target_stock = "BOME-USDT"  # 表现很不好
     # target_stock = "ARKM-USDT"  # 表现很不好
     # target_stock = "ORDI-USDT"  # 119
-    target_stock = "ZRO-USDT"  # 124
+    # target_stock = "ZRO-USDT"  # 124
     # target_stock = "MEW-USDT"  # 116
 
     total_path = os.path.join(BASE_DIR, f"../data/15m/{target_stock}.json")
