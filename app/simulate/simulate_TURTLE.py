@@ -202,6 +202,13 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
 
 
 def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=False):
+    with open('market_monitor.json', 'r') as file:
+        target_stock_dict = json.load(file)
+
+    target_stock_info = target_stock_dict[target_stock]
+    newest_price = target_stock_info["last"]
+    market_cap = target_stock_info["marketCap"]
+    
     buy_days = []
     sell_days = []
     sell_empty_days = []
@@ -243,9 +250,21 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
             # if auth:
             #     continue
 
+            previous_market_cap = market_cap*today_min_price/newest_price
+            
+            # 市值小于1亿，不建仓
+            if previous_market_cap < 0.1*10**8:
+                print(f"市值小于1亿，不建仓,market_cap:{previous_market_cap}")
+                continue
+
+            # # 市值大于10亿，不建仓
+            # if previous_market_cap > 10*10**8:
+            #     print(f"市值大于10亿，不建仓,market_cap:{previous_market_cap}")
+            #     continue
+
             pre_pre = compute_market_deal(pre_pre_candle)
             pre = compute_market_deal(pre_candle)
-            if pre / pre_pre < 0.8:
+            if pre / pre_pre < 0.3:
                 continue
 
             print(f"{day}, today: {beijing_time(today_timestamp)}")
@@ -367,11 +386,11 @@ if __name__ == '__main__':
     # target_stock = "LUNC-USDT"
     # target_stock = "PEPE-USDT"
 
-    # target_stock = "RACA-USDT"
+    target_stock = "RACA-USDT"
     target_stock = "JST-USDT"
-    target_stock = "ZRX-USDT"
-    target_stock = "ZIL-USDT"
-    target_stock = "ORDI-USDT"
+    # target_stock = "ZRX-USDT"
+    # target_stock = "ZIL-USDT"
+    # target_stock = "ORDI-USDT"
 
     # target_stock = "BOME-USDT"  # 4H的时长不够
     # target_stock = "ARKM-USDT"  # 4H的时长不够
@@ -392,8 +411,8 @@ if __name__ == '__main__':
     start_day = 180*6
     end_day = -1
 
-    # start_day = 0
-    # end_day = -1
+    start_day = 0
+    end_day = -1
 
     long_period_candle = long_period_candle[start_day:end_day]
 

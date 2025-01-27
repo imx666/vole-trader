@@ -39,16 +39,26 @@ target_stock_li = [
 ]
 
 with open('market_monitor.json', 'r') as file:
-    target_stock_li = json.load(file)
+    target_stock_dict = json.load(file)
 
+target_stock_li = list(target_stock_dict.keys())
 PERIOD = 3
 
 start_day = 0
-end_day = 180 * 6
+end_day = 30 * 6
 
-start_day = 180 * 6
-end_day = -1
+start_day = 0
+end_day = 60 * 6
 
+# start_day = 0
+# end_day = 180 * 6
+
+# start_day = 180 * 6
+# end_day = -1
+#
+# start_day = 270 * 6
+# end_day = -1
+#
 # start_day = 0
 # end_day = -1
 
