@@ -16,7 +16,8 @@ export $(xargs <.env.dev)
 
 
 # 启动 supervisord
-supervisord -n -c ./op/supervisord_data.conf
+#supervisord -n -c ./op/supervisord_data.conf # 前台运行，方便调试
+supervisord -c ./op/supervisord_data.conf # 在后台运行
 
 echo "supervisord start success!"
 
