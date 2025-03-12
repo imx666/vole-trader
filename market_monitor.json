@@ -1,1 +1,842 @@
-["BTT-USDT", "BSV-USDT", "CRV-USDT", "NEO-USDT", "AR-USDT", "AXS-USDT", "STRK-USDT", "MANA-USDT", "JTO-USDT", "EGLD-USDT", "DYDX-USDT", "CFX-USDT", "CORE-USDT", "XAUT-USDT", "APE-USDT", "RSR-USDT", "CHZ-USDT", "COMP-USDT", "MORPHO-USDT", "W-USDT", "RON-USDT", "EIGEN-USDT", "PENDLE-USDT", "MINA-USDT", "ZK-USDT", "SNX-USDT", "PYUSD-USDT", "NFT-USDT", "NOT-USDT", "AIXBT-USDT", "1INCH-USDT", "LPT-USDT", "SAFE-USDT", "LUNC-USDT", "BLUR-USDT", "KSM-USDT", "ZRO-USDT", "ARKM-USDT", "MEW-USDT", "ORDI-USDT", "ASTR-USDT", "JST-USDT", "ZIL-USDT", "TURBO-USDT", "BIO-USDT", "ZRX-USDT", "ETHFI-USDT", "BABYDOGE-USDT", "ATH-USDT", "BAT-USDT", "GLM-USDT", "CTC-USDT", "CELO-USDT", "WOO-USDT", "GAS-USDT", "QTUM-USDT", "SWFTC-USDT", "SC-USDT", "UXLINK-USDT", "ANIME-USDT", "VINE-USDT", "ZETA-USDT", "ENJ-USDT", "MEME-USDT", "SATS-USDT", "RVN-USDT", "PNUT-USDT", "ELF-USDT", "ETHW-USDT", "GMT-USDT", "CVX-USDT", "T-USDT", "XCH-USDT", "SKL-USDT", "ME-USDT", "BOME-USDT", "YFI-USDT", "KDA-USDT", "ONE-USDT", "AEVO-USDT", "SUSHI-USDT", "FXS-USDT", "LUNA-USDT", "ILV-USDT", "MASK-USDT", "BICO-USDT", "NEIRO-USDT", "GMX-USDT", "METIS-USDT", "GOAT-USDT", "LRC-USDT", "ONT-USDT", "G-USDT", "CSPR-USDT", "ZEUS-USDT", "BAND-USDT", "UMA-USDT", "DGB-USDT", "ACT-USDT", "RPL-USDT", "SONIC-USDT", "HMSTR-USDT", "ICX-USDT", "GLMR-USDT", "SNT-USDT", "PHA-USDT", "DOGS-USDT", "ID-USDT", "VELO-USDT", "XNO-USDT", "BAL-USDT", "LSK-USDT", "LQTY-USDT", "ELON-USDT", "ZENT-USDT", "BIGTIME-USDT", "API3-USDT", "ACH-USDT", "IQ-USDT", "BORA-USDT", "WAXP-USDT", "PEOPLE-USDT", "OKT-USDT", "YGG-USDT", "IOST-USDT", "BANANA-USDT", "JOE-USDT", "DEGEN-USDT", "SSV-USDT", "CETUS-USDT", "AGLD-USDT", "CFG-USDT", "MOODENG-USDT", "TRB-USDT", "ORBS-USDT", "SLP-USDT", "ZKJ-USDT", "CVC-USDT", "CAT-USDT"]
+{
+  "BTT-USDT": {
+    "symbol": "btt_usdt",
+    "marketCap": 967471831.4281431,
+    "last": 9.992e-07,
+    "changePercentage": "-6.81%"
+  },
+  "FLOW-USDT": {
+    "symbol": "flow_usdt",
+    "marketCap": 960072065.8023175,
+    "last": 0.6157,
+    "changePercentage": "-10.04%"
+  },
+  "BSV-USDT": {
+    "symbol": "bsv_usdt",
+    "marketCap": 948624232.25,
+    "last": 47.87,
+    "changePercentage": "-8.01%"
+  },
+  "NEO-USDT": {
+    "symbol": "neo_usdt",
+    "marketCap": 915338340.0,
+    "last": 12.978,
+    "changePercentage": "-8.62%"
+  },
+  "CRV-USDT": {
+    "symbol": "crv_usdt",
+    "marketCap": 904564554.948,
+    "last": 0.7096,
+    "changePercentage": "-12.23%"
+  },
+  "AR-USDT": {
+    "symbol": "ar_usdt",
+    "marketCap": 837159033.0329525,
+    "last": 12.79,
+    "changePercentage": "-13.02%"
+  },
+  "AXS-USDT": {
+    "symbol": "axs_usdt",
+    "marketCap": 832710579.5142192,
+    "last": 5.269,
+    "changePercentage": "-8.71%"
+  },
+  "STRK-USDT": {
+    "symbol": "strk_usdt",
+    "marketCap": 832174653.904,
+    "last": 0.344,
+    "changePercentage": "-8.41%"
+  },
+  "MANA-USDT": {
+    "symbol": "mana_usdt",
+    "marketCap": 811465471.2055784,
+    "last": 0.4344,
+    "changePercentage": "-8.26%"
+  },
+  "EGLD-USDT": {
+    "symbol": "egld_usdt",
+    "marketCap": 772120196.36,
+    "last": 27.71,
+    "changePercentage": "-9.33%"
+  },
+  "JTO-USDT": {
+    "symbol": "jto_usdt",
+    "marketCap": 767088285.4558,
+    "last": 2.674,
+    "changePercentage": "-9.81%"
+  },
+  "DYDX-USDT": {
+    "symbol": "dydx_usdt",
+    "marketCap": 750021730.0195636,
+    "last": 1.0388,
+    "changePercentage": "-10.59%"
+  },
+  "CFX-USDT": {
+    "symbol": "cfx_usdt",
+    "marketCap": 714123161.8113192,
+    "last": 0.1479,
+    "changePercentage": "-1.79%"
+  },
+  "XAUT-USDT": {
+    "symbol": "xaut_usdt",
+    "marketCap": 673898908.488,
+    "last": 2733.6,
+    "changePercentage": "-0.96%"
+  },
+  "CORE-USDT": {
+    "symbol": "core_usdt",
+    "marketCap": 656322313.737538,
+    "last": 0.7008,
+    "changePercentage": "-15.77%"
+  },
+  "APE-USDT": {
+    "symbol": "ape_usdt",
+    "marketCap": 644975283.522,
+    "last": 0.894,
+    "changePercentage": "-9.88%"
+  },
+  "RSR-USDT": {
+    "symbol": "rsr_usdt",
+    "marketCap": 640619156.34322,
+    "last": 0.011668,
+    "changePercentage": "-7.70%"
+  },
+  "MORPHO-USDT": {
+    "symbol": "morpho_usdt",
+    "marketCap": 637037739.1841108,
+    "last": 2.935,
+    "changePercentage": "-4.54%"
+  },
+  "CHZ-USDT": {
+    "symbol": "chz_usdt",
+    "marketCap": 627138551.82745,
+    "last": 0.06695,
+    "changePercentage": "-11.48%"
+  },
+  "COMP-USDT": {
+    "symbol": "comp_usdt",
+    "marketCap": 592632433.4643066,
+    "last": 66.82,
+    "changePercentage": "-11.06%"
+  },
+  "W-USDT": {
+    "symbol": "w_usdt",
+    "marketCap": 585714067.897,
+    "last": 0.2065,
+    "changePercentage": "-9.43%"
+  },
+  "RON-USDT": {
+    "symbol": "ron_usdt",
+    "marketCap": 580355375.9550205,
+    "last": 1.478,
+    "changePercentage": "-8.26%"
+  },
+  "EIGEN-USDT": {
+    "symbol": "eigen_usdt",
+    "marketCap": 565591470.53444,
+    "last": 2.407,
+    "changePercentage": "-12.57%"
+  },
+  "PENDLE-USDT": {
+    "symbol": "pendle_usdt",
+    "marketCap": 564204222.6145935,
+    "last": 3.43,
+    "changePercentage": "-10.63%"
+  },
+  "MINA-USDT": {
+    "symbol": "mina_usdt",
+    "marketCap": 551868442.2128898,
+    "last": 0.4558,
+    "changePercentage": "-8.23%"
+  },
+  "ZK-USDT": {
+    "symbol": "zk_usdt",
+    "marketCap": 514500000.0,
+    "last": 0.14,
+    "changePercentage": "-8.85%"
+  },
+  "PYUSD-USDT": {
+    "symbol": "pyusd_usdt",
+    "marketCap": 483828818.48195577,
+    "last": 0.9999,
+    "changePercentage": "0.02%"
+  },
+  "SNX-USDT": {
+    "symbol": "snx_usdt",
+    "marketCap": 482381494.34335655,
+    "last": 1.421,
+    "changePercentage": "-11.57%"
+  },
+  "NFT-USDT": {
+    "symbol": "nft_usdt",
+    "marketCap": 469013061.97902346,
+    "last": 4.737e-07,
+    "changePercentage": "-5.79%"
+  },
+  "NOT-USDT": {
+    "symbol": "not_usdt",
+    "marketCap": 448351646.1493716,
+    "last": 0.004376,
+    "changePercentage": "-13.33%"
+  },
+  "AIXBT-USDT": {
+    "symbol": "aixbt_usdt",
+    "marketCap": 442351782.444,
+    "last": 0.517,
+    "changePercentage": "-14.62%"
+  },
+  "1INCH-USDT": {
+    "symbol": "1inch_usdt",
+    "marketCap": 413082265.40144175,
+    "last": 0.2954,
+    "changePercentage": "-7.98%"
+  },
+  "LUNC-USDT": {
+    "symbol": "lunc_usdt",
+    "marketCap": 408928142.8364805,
+    "last": 7.43e-05,
+    "changePercentage": "-9.39%"
+  },
+  "LPT-USDT": {
+    "symbol": "lpt_usdt",
+    "marketCap": 408486864.76365745,
+    "last": 10.859,
+    "changePercentage": "-8.95%"
+  },
+  "ZRO-USDT": {
+    "symbol": "zro_usdt",
+    "marketCap": 406819446.3999388,
+    "last": 3.66,
+    "changePercentage": "-5.43%"
+  },
+  "SAFE-USDT": {
+    "symbol": "safe_usdt",
+    "marketCap": 404055764.0829,
+    "last": 0.7661,
+    "changePercentage": "-9.64%"
+  },
+  "KSM-USDT": {
+    "symbol": "ksm_usdt",
+    "marketCap": 396767706.7521311,
+    "last": 24.75,
+    "changePercentage": "-10.91%"
+  },
+  "BLUR-USDT": {
+    "symbol": "blur_usdt",
+    "marketCap": 392930037.3622051,
+    "last": 0.1814,
+    "changePercentage": "-9.84%"
+  },
+  "ARKM-USDT": {
+    "symbol": "arkm_usdt",
+    "marketCap": 392055462.635,
+    "last": 1.115,
+    "changePercentage": "-11.08%"
+  },
+  "MEW-USDT": {
+    "symbol": "mew_usdt",
+    "marketCap": 380799999.9999619,
+    "last": 0.004284,
+    "changePercentage": "-12.34%"
+  },
+  "ORDI-USDT": {
+    "symbol": "ordi_usdt",
+    "marketCap": 373380000.0,
+    "last": 17.78,
+    "changePercentage": "-12.60%"
+  },
+  "TURBO-USDT": {
+    "symbol": "turbo_usdt",
+    "marketCap": 370771500.0,
+    "last": 0.0053735,
+    "changePercentage": "-8.48%"
+  },
+  "SWFTC-USDT": {
+    "symbol": "swftc_usdt",
+    "marketCap": 370000000.0,
+    "last": 0.037,
+    "changePercentage": "98.36%"
+  },
+  "ASTR-USDT": {
+    "symbol": "astr_usdt",
+    "marketCap": 369771224.28876,
+    "last": 0.04924,
+    "changePercentage": "-8.07%"
+  },
+  "JST-USDT": {
+    "symbol": "jst_usdt",
+    "marketCap": 361350000.0,
+    "last": 0.0365,
+    "changePercentage": "-4.65%"
+  },
+  "ZIL-USDT": {
+    "symbol": "zil_usdt",
+    "marketCap": 354688226.43693614,
+    "last": 0.01823,
+    "changePercentage": "-8.07%"
+  },
+  "BIO-USDT": {
+    "symbol": "bio_usdt",
+    "marketCap": 347713682.88150525,
+    "last": 0.214,
+    "changePercentage": "-11.53%"
+  },
+  "ETHFI-USDT": {
+    "symbol": "ethfi_usdt",
+    "marketCap": 340084418.268,
+    "last": 1.554,
+    "changePercentage": "-10.28%"
+  },
+  "ZRX-USDT": {
+    "symbol": "zrx_usdt",
+    "marketCap": 338679907.91240895,
+    "last": 0.3992,
+    "changePercentage": "-11.97%"
+  },
+  "BABYDOGE-USDT": {
+    "symbol": "babydoge_usdt",
+    "marketCap": 328446699.87931776,
+    "last": 1.985e-09,
+    "changePercentage": "-11.23%"
+  },
+  "ATH-USDT": {
+    "symbol": "ath_usdt",
+    "marketCap": 320705973.67224,
+    "last": 0.05196,
+    "changePercentage": "-8.25%"
+  },
+  "BAT-USDT": {
+    "symbol": "bat_usdt",
+    "marketCap": 320370020.05924815,
+    "last": 0.2142,
+    "changePercentage": "-9.43%"
+  },
+  "GLM-USDT": {
+    "symbol": "glm_usdt",
+    "marketCap": 316700000.0,
+    "last": 0.3167,
+    "changePercentage": "-8.10%"
+  },
+  "CTC-USDT": {
+    "symbol": "ctc_usdt",
+    "marketCap": 298417924.992,
+    "last": 0.9515,
+    "changePercentage": "-7.12%"
+  },
+  "GAS-USDT": {
+    "symbol": "gas_usdt",
+    "marketCap": 295394668.50990945,
+    "last": 4.538,
+    "changePercentage": "-6.49%"
+  },
+  "CELO-USDT": {
+    "symbol": "celo_usdt",
+    "marketCap": 293764121.7,
+    "last": 0.525,
+    "changePercentage": "-9.09%"
+  },
+  "WOO-USDT": {
+    "symbol": "woo_usdt",
+    "marketCap": 292091082.32185763,
+    "last": 0.1568,
+    "changePercentage": "-10.09%"
+  },
+  "QTUM-USDT": {
+    "symbol": "qtum_usdt",
+    "marketCap": 289275839.556,
+    "last": 2.742,
+    "changePercentage": "-7.74%"
+  },
+  "UXLINK-USDT": {
+    "symbol": "uxlink_usdt",
+    "marketCap": 280131060.0,
+    "last": 0.8283,
+    "changePercentage": "-9.31%"
+  },
+  "VINE-USDT": {
+    "symbol": "vine_usdt",
+    "marketCap": 279577751.3087779,
+    "last": 0.27958,
+    "changePercentage": "-24.39%"
+  },
+  "SC-USDT": {
+    "symbol": "sc_usdt",
+    "marketCap": 277930842.790371,
+    "last": 0.005012,
+    "changePercentage": "-7.06%"
+  },
+  "SATS-USDT": {
+    "symbol": "sats_usdt",
+    "marketCap": 269640000.0,
+    "last": 1.284e-07,
+    "changePercentage": "-6.48%"
+  },
+  "ZETA-USDT": {
+    "symbol": "zeta_usdt",
+    "marketCap": 266374062.5,
+    "last": 0.4199,
+    "changePercentage": "-11.97%"
+  },
+  "ENJ-USDT": {
+    "symbol": "enj_usdt",
+    "marketCap": 264781366.48329958,
+    "last": 0.1473,
+    "changePercentage": "-10.51%"
+  },
+  "ANIME-USDT": {
+    "symbol": "anime_usdt",
+    "marketCap": 262862176.97376,
+    "last": 0.04746,
+    "changePercentage": "-15.16%"
+  },
+  "MEME-USDT": {
+    "symbol": "meme_usdt",
+    "marketCap": 260264757.31384847,
+    "last": 0.007071,
+    "changePercentage": "-13.59%"
+  },
+  "ETHW-USDT": {
+    "symbol": "ethw_usdt",
+    "marketCap": 258333646.0516323,
+    "last": 2.396,
+    "changePercentage": "-8.93%"
+  },
+  "RVN-USDT": {
+    "symbol": "rvn_usdt",
+    "marketCap": 257393982.6385484,
+    "last": 0.01744,
+    "changePercentage": "-8.36%"
+  },
+  "PNUT-USDT": {
+    "symbol": "pnut_usdt",
+    "marketCap": 252064431.732847,
+    "last": 0.2521,
+    "changePercentage": "-19.74%"
+  },
+  "ELF-USDT": {
+    "symbol": "elf_usdt",
+    "marketCap": 249749571.84628123,
+    "last": 0.3381,
+    "changePercentage": "-10.82%"
+  },
+  "SKL-USDT": {
+    "symbol": "skl_usdt",
+    "marketCap": 248132805.18567,
+    "last": 0.04791,
+    "changePercentage": "-9.04%"
+  },
+  "GMT-USDT": {
+    "symbol": "gmt_usdt",
+    "marketCap": 245703744.9846566,
+    "last": 0.0933,
+    "changePercentage": "-11.81%"
+  },
+  "CVX-USDT": {
+    "symbol": "cvx_usdt",
+    "marketCap": 244660259.9131744,
+    "last": 2.984,
+    "changePercentage": "-15.94%"
+  },
+  "XCH-USDT": {
+    "symbol": "xch_usdt",
+    "marketCap": 243467239.74258524,
+    "last": 17.51,
+    "changePercentage": "-8.32%"
+  },
+  "T-USDT": {
+    "symbol": "t_usdt",
+    "marketCap": 240277969.10618824,
+    "last": 0.02385,
+    "changePercentage": "-10.00%"
+  },
+  "YFI-USDT": {
+    "symbol": "yfi_usdt",
+    "marketCap": 238014201.08935425,
+    "last": 7074,
+    "changePercentage": "-5.68%"
+  },
+  "ME-USDT": {
+    "symbol": "me_usdt",
+    "marketCap": 236103689.5331144,
+    "last": 1.819,
+    "changePercentage": "-10.04%"
+  },
+  "ONE-USDT": {
+    "symbol": "one_usdt",
+    "marketCap": 230357576.8728131,
+    "last": 0.01872,
+    "changePercentage": "-12.24%"
+  },
+  "BOME-USDT": {
+    "symbol": "bome_usdt",
+    "marketCap": 228250873.854252,
+    "last": 0.003308,
+    "changePercentage": "-15.35%"
+  },
+  "AEVO-USDT": {
+    "symbol": "aevo_usdt",
+    "marketCap": 227758073.49112412,
+    "last": 0.2524,
+    "changePercentage": "-11.78%"
+  },
+  "SUSHI-USDT": {
+    "symbol": "sushi_usdt",
+    "marketCap": 223712652.49470097,
+    "last": 1.1604,
+    "changePercentage": "-13.47%"
+  },
+  "KDA-USDT": {
+    "symbol": "kda_usdt",
+    "marketCap": 223124217.14278433,
+    "last": 0.737,
+    "changePercentage": "-13.22%"
+  },
+  "FXS-USDT": {
+    "symbol": "fxs_usdt",
+    "marketCap": 215633614.9778876,
+    "last": 2.468,
+    "changePercentage": "-10.71%"
+  },
+  "LUNA-USDT": {
+    "symbol": "luna_usdt",
+    "marketCap": 214962587.898,
+    "last": 0.3126,
+    "changePercentage": "-9.73%"
+  },
+  "MASK-USDT": {
+    "symbol": "mask_usdt",
+    "marketCap": 214400000.0,
+    "last": 2.144,
+    "changePercentage": "-10.29%"
+  },
+  "ILV-USDT": {
+    "symbol": "ilv_usdt",
+    "marketCap": 214335458.79017282,
+    "last": 29.33,
+    "changePercentage": "-9.28%"
+  },
+  "BICO-USDT": {
+    "symbol": "bico_usdt",
+    "marketCap": 211053580.23608187,
+    "last": 0.2284,
+    "changePercentage": "-9.90%"
+  },
+  "GMX-USDT": {
+    "symbol": "gmx_usdt",
+    "marketCap": 206901772.70478874,
+    "last": 20.82,
+    "changePercentage": "-7.55%"
+  },
+  "GOAT-USDT": {
+    "symbol": "goat_usdt",
+    "marketCap": 201999207.419185,
+    "last": 0.202,
+    "changePercentage": "-16.36%"
+  },
+  "NEIRO-USDT": {
+    "symbol": "neiro_usdt",
+    "marketCap": 199280853.0,
+    "last": 0.0004737,
+    "changePercentage": "-15.08%"
+  },
+  "METIS-USDT": {
+    "symbol": "metis_usdt",
+    "marketCap": 196208931.9243,
+    "last": 31.65,
+    "changePercentage": "-11.86%"
+  },
+  "ACT-USDT": {
+    "symbol": "act_usdt",
+    "marketCap": 195433543.56625706,
+    "last": 0.2061,
+    "changePercentage": "-1.34%"
+  },
+  "ONT-USDT": {
+    "symbol": "ont_usdt",
+    "marketCap": 193309406.1126,
+    "last": 0.2118,
+    "changePercentage": "-7.15%"
+  },
+  "LRC-USDT": {
+    "symbol": "lrc_usdt",
+    "marketCap": 192131884.51092732,
+    "last": 0.1542,
+    "changePercentage": "-11.18%"
+  },
+  "G-USDT": {
+    "symbol": "g_usdt",
+    "marketCap": 186965295.0,
+    "last": 0.02585,
+    "changePercentage": "-7.61%"
+  },
+  "CSPR-USDT": {
+    "symbol": "cspr_usdt",
+    "marketCap": 183075131.142696,
+    "last": 0.014306,
+    "changePercentage": "-2.28%"
+  },
+  "DGB-USDT": {
+    "symbol": "dgb_usdt",
+    "marketCap": 182889083.38083446,
+    "last": 0.010455,
+    "changePercentage": "-6.64%"
+  },
+  "BAND-USDT": {
+    "symbol": "band_usdt",
+    "marketCap": 181517559.51917568,
+    "last": 1.164,
+    "changePercentage": "-10.05%"
+  },
+  "UMA-USDT": {
+    "symbol": "uma_usdt",
+    "marketCap": 179459066.0295472,
+    "last": 2.124,
+    "changePercentage": "-10.64%"
+  },
+  "ZEUS-USDT": {
+    "symbol": "zeus_usdt",
+    "marketCap": 172977482.1416315,
+    "last": 0.4519,
+    "changePercentage": "-19.20%"
+  },
+  "RPL-USDT": {
+    "symbol": "rpl_usdt",
+    "marketCap": 172537952.41075817,
+    "last": 8.19,
+    "changePercentage": "-10.10%"
+  },
+  "SONIC-USDT": {
+    "symbol": "sonic_usdt",
+    "marketCap": 166392000.0,
+    "last": 0.4622,
+    "changePercentage": "-14.03%"
+  },
+  "ACH-USDT": {
+    "symbol": "ach_usdt",
+    "marketCap": 163092368.30513346,
+    "last": 0.03299,
+    "changePercentage": "55.54%"
+  },
+  "ICX-USDT": {
+    "symbol": "icx_usdt",
+    "marketCap": 161690465.89014542,
+    "last": 0.1548,
+    "changePercentage": "-9.95%"
+  },
+  "HMSTR-USDT": {
+    "symbol": "hmstr_usdt",
+    "marketCap": 161452500.0,
+    "last": 0.002508,
+    "changePercentage": "-10.30%"
+  },
+  "PHA-USDT": {
+    "symbol": "pha_usdt",
+    "marketCap": 155415980.06652102,
+    "last": 0.2001,
+    "changePercentage": "-10.87%"
+  },
+  "VELO-USDT": {
+    "symbol": "velo_usdt",
+    "marketCap": 154682654.20335,
+    "last": 0.02093,
+    "changePercentage": "-15.29%"
+  },
+  "GLMR-USDT": {
+    "symbol": "glmr_usdt",
+    "marketCap": 152658021.0752,
+    "last": 0.1616,
+    "changePercentage": "-14.13%"
+  },
+  "XNO-USDT": {
+    "symbol": "xno_usdt",
+    "marketCap": 151036936.715,
+    "last": 1.1335,
+    "changePercentage": "-6.40%"
+  },
+  "SNT-USDT": {
+    "symbol": "snt_usdt",
+    "marketCap": 150181545.25270373,
+    "last": 0.03792,
+    "changePercentage": "-9.02%"
+  },
+  "ID-USDT": {
+    "symbol": "id_usdt",
+    "marketCap": 147362248.9836,
+    "last": 0.3423,
+    "changePercentage": "-10.23%"
+  },
+  "BAL-USDT": {
+    "symbol": "bal_usdt",
+    "marketCap": 145290802.06648123,
+    "last": 2.353,
+    "changePercentage": "-8.55%"
+  },
+  "DOGS-USDT": {
+    "symbol": "dogs_usdt",
+    "marketCap": 144483300.0,
+    "last": 0.0002796,
+    "changePercentage": "-15.45%"
+  },
+  "LQTY-USDT": {
+    "symbol": "lqty_usdt",
+    "marketCap": 143403886.2837,
+    "last": 1.4785,
+    "changePercentage": "-7.01%"
+  },
+  "LSK-USDT": {
+    "symbol": "lsk_usdt",
+    "marketCap": 141733415.7867756,
+    "last": 0.851,
+    "changePercentage": "-7.72%"
+  },
+  "ELON-USDT": {
+    "symbol": "elon_usdt",
+    "marketCap": 139721022.8120482,
+    "last": 2.542e-07,
+    "changePercentage": "-12.71%"
+  },
+  "BIGTIME-USDT": {
+    "symbol": "bigtime_usdt",
+    "marketCap": 137752644.8854513,
+    "last": 0.08717,
+    "changePercentage": "-11.69%"
+  },
+  "API3-USDT": {
+    "symbol": "api3_usdt",
+    "marketCap": 137593826.75627452,
+    "last": 1.172,
+    "changePercentage": "-11.41%"
+  },
+  "BORA-USDT": {
+    "symbol": "bora_usdt",
+    "marketCap": 136485600.0,
+    "last": 0.1184,
+    "changePercentage": "-7.23%"
+  },
+  "IQ-USDT": {
+    "symbol": "iq_usdt",
+    "marketCap": 134440711.32624713,
+    "last": 0.00666,
+    "changePercentage": "-6.74%"
+  },
+  "PEOPLE-USDT": {
+    "symbol": "people_usdt",
+    "marketCap": 133095350.46405302,
+    "last": 0.02627,
+    "changePercentage": "-14.21%"
+  },
+  "ZENT-USDT": {
+    "symbol": "zent_usdt",
+    "marketCap": 132344063.83515927,
+    "last": 0.02099,
+    "changePercentage": "-17.62%"
+  },
+  "WAXP-USDT": {
+    "symbol": "waxp_usdt",
+    "marketCap": 131824225.16122028,
+    "last": 0.03762,
+    "changePercentage": "-10.51%"
+  },
+  "OKT-USDT": {
+    "symbol": "okt_usdt",
+    "marketCap": 130873953.9135,
+    "last": 7.333,
+    "changePercentage": "-8.25%"
+  },
+  "YGG-USDT": {
+    "symbol": "ygg_usdt",
+    "marketCap": 130198658.66358589,
+    "last": 0.3172,
+    "changePercentage": "-10.24%"
+  },
+  "BANANA-USDT": {
+    "symbol": "banana_usdt",
+    "marketCap": 127422786.97069925,
+    "last": 36.77,
+    "changePercentage": "-9.70%"
+  },
+  "IOST-USDT": {
+    "symbol": "iost_usdt",
+    "marketCap": 126248745.0,
+    "last": 0.005923,
+    "changePercentage": "-7.06%"
+  },
+  "AGLD-USDT": {
+    "symbol": "agld_usdt",
+    "marketCap": 123757849.6008,
+    "last": 1.6008,
+    "changePercentage": "-0.50%"
+  },
+  "SSV-USDT": {
+    "symbol": "ssv_usdt",
+    "marketCap": 122723850.24999799,
+    "last": 17.32,
+    "changePercentage": "-9.41%"
+  },
+  "TRB-USDT": {
+    "symbol": "trb_usdt",
+    "marketCap": 120404989.91515455,
+    "last": 45.48,
+    "changePercentage": "-9.71%"
+  },
+  "JOE-USDT": {
+    "symbol": "joe_usdt",
+    "marketCap": 119298340.94452518,
+    "last": 0.3118,
+    "changePercentage": "-10.43%"
+  },
+  "CETUS-USDT": {
+    "symbol": "cetus_usdt",
+    "marketCap": 118678925.34774494,
+    "last": 0.18456,
+    "changePercentage": "-15.61%"
+  },
+  "ORBS-USDT": {
+    "symbol": "orbs_usdt",
+    "marketCap": 116273489.03035311,
+    "last": 0.02566,
+    "changePercentage": "-6.59%"
+  },
+  "DEGEN-USDT": {
+    "symbol": "degen_usdt",
+    "marketCap": 116249635.64022842,
+    "last": 0.006611,
+    "changePercentage": "-4.63%"
+  },
+  "CFG-USDT": {
+    "symbol": "cfg_usdt",
+    "marketCap": 115722073.9233,
+    "last": 0.2249,
+    "changePercentage": "-12.46%"
+  },
+  "ZKJ-USDT": {
+    "symbol": "zkj_usdt",
+    "marketCap": 115302268.4265,
+    "last": 1.9095,
+    "changePercentage": "-0.38%"
+  },
+  "SLP-USDT": {
+    "symbol": "slp_usdt",
+    "marketCap": 114596540.582446,
+    "last": 0.002782,
+    "changePercentage": "-12.65%"
+  },
+  "MOODENG-USDT": {
+    "symbol": "moodeng_usdt",
+    "marketCap": 114361541.3159584,
+    "last": 0.11552,
+    "changePercentage": "-7.18%"
+  },
+  "CVC-USDT": {
+    "symbol": "cvc_usdt",
+    "marketCap": 109352701.3635,
+    "last": 0.13635,
+    "changePercentage": "-8.24%"
+  },
+  "CAT-USDT": {
+    "symbol": "cat_usdt",
+    "marketCap": 103544304.38740116,
+    "last": 1.534e-05,
+    "changePercentage": "-16.22%"
+  }
+}
