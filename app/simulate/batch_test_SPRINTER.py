@@ -21,38 +21,63 @@ os.system("clear")
 os.system("clear")
 time.sleep(2)
 
-# target_stock = "BTC-USDT"
-# target_stock = "ETH-USDT"
-# target_stock = "DOGE-USDT"
-
 
 target_stock_li = [
     # "PEPE-USDT",
     # "FLOKI-USDT",
-    "LUNC-USDT",
+    # "LUNC-USDT",
     # "OMI-USDT",
-    "ZRX-USDT",
+    # "ZRX-USDT",
     # "RACA-USDT",
-    "JST-USDT",
-    "ZIL-USDT",
-    "ORDI-USDT",
-    "MEW-USDT",
-    "ZRO-USDT"
+    # "JST-USDT",
+    # "ZIL-USDT",
+    # "ORDI-USDT",
+    # "MEW-USDT",
+    # "ZRO-USDT",
+    "DOGE-USDT",
+    "PEPE-USDT",
+    "SHIB-USDT",
+
+    "RENDER-USDT",
+    "JUP-USDT",
+    "BONK-USDT",
+
+    "UNI-USDT",
+    "AAVE-USDT",
+    "MKR-USDT",
+
+    "AVAX-USDT",
+    "OM-USDT",
+    "ICP-USDT",
+
+    "IMX-USDT",
+    "SAND-USDT",
+    "GALA-USDT",
 ]
 
-with open('market_monitor.json', 'r') as file:
-    target_stock_dict = json.load(file)
-
-target_stock_li = list(target_stock_dict.keys())
+# with open('market_monitor.json', 'r') as file:
+#     target_stock_dict = json.load(file)
+#
+# target_stock_li = list(target_stock_dict.keys())
 
 # target_stock_li = target_stock_li[:20]
 PERIOD = 3
 PERIOD_up = 6
 PERIOD_down = 3
 
-start_day = 3000
-end_day = 9600
-end_day = 7600
+start_day = (4 * 24) * 1  # 1天
+# start_day = (4 * 24) * 10
+start_day = (4*24) * 20
+start_day = (4*24) * 40
+# start_day = (4*24) * 60
+# start_day = (4*24) * 80
+
+end_day = (4 * 24) * 10
+end_day = (4 * 24) * 30
+end_day = (4 * 24) * 40
+end_day = (4 * 24) * 60
+end_day = (4 * 24) * 80
+end_day = (4 * 24) * 103  # 103天
 
 final_balance_li = []
 for target_stock in target_stock_li:
