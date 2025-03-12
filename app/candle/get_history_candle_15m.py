@@ -32,10 +32,43 @@ if __name__ == '__main__':
     from module.super_okx import GeniusTrader
     from utils.files import find_or_create_doc
 
-    with open('market_monitor.json', 'r') as file:
-        target_stock_dict = json.load(file)
+    # with open('market_monitor.json', 'r') as file:
+    #     target_stock_dict = json.load(file)
 
-    target_stock_li = list(target_stock_dict.keys())
+    # target_stock_li = list(target_stock_dict.keys())
+    target_stock_li = [
+        # "BTC-USDT",
+        # "ETH-USDT",
+        # "XRP-USDT",
+        # "SOL-USDT",
+        # "ADA-USDT",
+        # "FLOKI-USDT",
+        # "ORDI-USDT",
+        # "AAVE-USDT",
+        # "RAY-USDT",
+        # "YGG-USDT",
+        # "VELO-USDT",
+
+        # "DOGE-USDT",
+        # "PEPE-USDT",
+        # "SHIB-USDT",
+
+        # "RENDER-USDT",
+        # "JUP-USDT",
+        # "BONK-USDT",
+
+        # "UNI-USDT",
+        # "AAVE-USDT",
+        # "MKR-USDT",
+
+        # "AVAX-USDT",
+        # "OM-USDT",
+        # "ICP-USDT",
+
+        # "IMX-USDT",
+        # "SAND-USDT",
+        "GALA-USDT",
+    ]
 
     genius_trader = GeniusTrader()
 
