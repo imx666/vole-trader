@@ -124,6 +124,48 @@ def Amplitude(total_candle, side):
             return True
         return False
 
+    if side == 'open_short':
+        li = []
+        total_li = []
+        continue_up = 0
+        for today_candle in total_candle:
+            open_price = float(today_candle[1])
+            close_price = float(today_candle[4])
+            rate = close_price / open_price
+            total_li.append(rate)
+            if rate < 1:
+                continue_up += 1
+                li.append(rate)
+        # print("total_li", total_li)
+        if continue_up == 0:
+            return False, li
+
+        if continue_up == len(total_candle):
+            return True, li
+
+        # if continue_up == len(total_candle) - 1:
+        #     complete_li = deepcopy(total_li)
+        #     for item in li:
+        #         total_li.remove(item)
+        #     single = total_li[-1]
+        #     if single < 1.002:
+        #         return True, complete_li
+
+        return False, li
+
+
+    if side == 'close_short':
+        continue_down = 0
+        for today_candle in total_candle:
+            open_price = float(today_candle[1])
+            close_price = float(today_candle[4])
+            rate = close_price / open_price
+            if rate > 1:
+                continue_down += 1
+        if continue_down == len(total_candle):
+            return True
+        return False
+
 
 if __name__ == '__main__':
     pre_candle = [
