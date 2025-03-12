@@ -156,19 +156,21 @@ def sell(account_info, market_price, ratio=1.0, today_timestamp=None):
 
 
 def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_candle, total_path, draw=False):
-    with open('market_monitor.json', 'r') as file:
-        target_stock_dict = json.load(file)
-
-    target_stock_info = target_stock_dict[target_stock]
-    newest_price = target_stock_info["last"]
-    market_cap = target_stock_info["marketCap"]
+    # with open('market_monitor.json', 'r') as file:
+    #     target_stock_dict = json.load(file)
+    #
+    # target_stock_info = target_stock_dict[target_stock]
+    # newest_price = target_stock_info["last"]
+    # market_cap = target_stock_info["marketCap"]
 
     buy_days = []
     sell_days = []
     sell_empty_days = []
+    market_deal_rate_li = []
 
     account_info = Account_info()
     close_price = 0
+    close_price2 = 0
 
     for day in range(len(long_period_candle)):
         if day < PERIOD:
@@ -188,24 +190,28 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
         pre_candle = long_period_candle[day - PERIOD_up:day]
         target_market_price = open_price
         auth, li = Amplitude(pre_candle, "up")
+        # auth, li = Amplitude(pre_candle, "open_short")
         if auth and position == 0:
 
-            # 市值小于0.1亿，不建仓
-            previous_market_cap = market_cap * today_min_price / newest_price
-            if previous_market_cap < 0.1 * 10 ** 8:
-                print(f"市值小于0.1亿，不建仓,market_cap:{previous_market_cap}")
-                continue
+            # # 市值小于0.1亿，不建仓
+            # previous_market_cap = market_cap * today_min_price / newest_price
+            # if previous_market_cap < 0.1 * 10 ** 8:
+            #     print(f"市值小于0.1亿，不建仓,market_cap:{previous_market_cap}")
+            #     continue
 
             pre_pre = compute_market_deal(pre_pre_candle)
             pre = compute_market_deal(pre_candle)
-            if pre / pre_pre < 0.5:
-                continue
-            
+            market_deal_rate = pre / pre_pre
+            # if market_deal_rate < 0.5:
+            #     continue
+
             # if sum(li) - PERIOD_up < 0.01:
             #     continue
 
             print(f"\n\n\n\n{day}, today: {beijing_time(today_timestamp)}")
             print("建仓")
+            print("market_deal_rate", round(market_deal_rate, 3))
+            market_deal_rate_li.append(round(market_deal_rate, 3))
             print(li, sum(li) - PERIOD_up)
             for i in li:
                 if i < 1:
@@ -213,22 +219,8 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
 
             buy_days.append([today_timestamp, target_market_price])
             close_price = target_market_price * (1 - STOP_LOSS_RATE)
+            close_price2 = target_market_price * (1 + STOP_LOSS_RATE)
             print(pre_pre, pre, pre / pre_pre)
-
-            # amount = round(account_info.risk_rate * account_info.init_balance / ATR, 5)
-            # total_cost = amount * target_market_price
-            #
-            # expect_max_cost = account_info.init_balance * 0.3
-            # if total_cost > expect_max_cost:
-            #     print("超预算(减少数量)")
-            #     amount = expect_max_cost / target_market_price
-            #     total_cost = expect_max_cost
-            #
-            # expect_min_cost = account_info.init_balance * 0.24
-            # if total_cost < expect_min_cost:
-            #     print("不足预算(增加数量)")
-            #     amount = expect_min_cost / target_market_price
-            #     total_cost = expect_min_cost
 
             amount = round(account_info.init_balance * 0.99 / target_market_price, 8)
             amount = amount * (1 - DEAL_RATE)
@@ -254,9 +246,31 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
             print()
             continue
 
+        # position = account_info.long_position
+        # target_market_price = close_price
+        # if today_min_price < target_market_price < today_max_price and position > 0:
+        #     print(f"{day}, today: {beijing_time(today_timestamp)}")
+        #     print("平仓(-3)")
+        #     sell_empty_days.append([today_timestamp, target_market_price])
+        #     sell(account_info, target_market_price, today_timestamp=today_timestamp)
+        #     print()
+        #     continue
+
+        # position = account_info.long_position
+        # target_market_price = close_price2
+        # if today_min_price < target_market_price < today_max_price and position > 0:
+        #     print(f"{day}, today: {beijing_time(today_timestamp)}")
+        #     print("平仓(+3)")
+        #     sell_empty_days.append([today_timestamp, target_market_price])
+        #     sell(account_info, target_market_price, today_timestamp=today_timestamp)
+        #     print()
+        #     continue
+
+
         position = account_info.long_position
         target_market_price = open_price
         pre_candle = long_period_candle[day - PERIOD_down:day]
+        # if Amplitude(pre_candle, "close_short") and position > 0:
         if Amplitude(pre_candle, "down") and position > 0:
             print(f"{day}, today: {beijing_time(today_timestamp)}")
             print("平仓")
@@ -265,21 +279,9 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
             print()
             continue
 
-        position = account_info.long_position
-        target_market_price = close_price
-        if today_min_price < target_market_price < today_max_price and position > 0:
-            print(f"{day}, today: {beijing_time(today_timestamp)}")
-            print("平仓(半线)")
-            sell_empty_days.append([today_timestamp, target_market_price])
-            sell(account_info, target_market_price, today_timestamp=today_timestamp)
-            print()
-            continue
+
 
     hold_market_price = account_info.print_all_info()
-
-    if draw:
-        draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day,
-                     return_rate_list=account_info.return_rate_list)
 
     report_dict = {
         "标的": target_stock,
@@ -289,6 +291,15 @@ def execution_plan(PERIOD, PERIOD_up, PERIOD_down, target_stock, long_period_can
         "盈亏比": (account_info.make_money_rate / account_info.make_money_times) / (
                     account_info.lost_money_rate / account_info.lost_money_times)
     }
+    for attr, value in report_dict.items():
+        print(f"{attr}: {value}")
+
+    print(sorted(market_deal_rate_li))
+
+    if draw:
+        draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days, start_day, end_day,
+                     return_rate_list=account_info.return_rate_list)
+
     return report_dict
 
 
@@ -297,25 +308,63 @@ if __name__ == '__main__':
     target_stock = os.getenv("target_stock")
 
     PERIOD = 3
-    PERIOD_up = 6
+    PERIOD_up = 5
     PERIOD_down = 3
 
-    start_day = 3000
-    end_day = 9600
-    end_day = 7600
-    end_day = 60 * 96
+    start_day = (4*24) * 1  # 1天
+    # start_day = (4*24) * 10
+    # start_day = (4*24) * 20
+    # start_day = (4*24) * 40
+    # start_day = (4*24) * 60
+    # start_day = (4*24) * 80
+
+    # end_day = (4*24) * 5
+    end_day = (4*24) * 10
+    # end_day = (4*24) * 30
+    end_day = (4*24) * 40
+    # end_day = (4*24) * 60
+    # end_day = (4*24) * 80
+    end_day = (4*24) * 103  # 103天
+
+
+    # defi
+    target_stock = "UNI-USDT"
+    target_stock = "AAVE-USDT"
+    target_stock = "MKR-USDT"
+
+    # meme
+    target_stock = "DOGE-USDT"
+    target_stock = "PEPE-USDT"
+    target_stock = "SHIB-USDT"
+
+    # solana
+    target_stock = "RENDER-USDT"
+    target_stock = "JUP-USDT"
+    target_stock = "BONK-USDT"
+
+    # RWA
+    target_stock = "AVAX-USDT"
+    target_stock = "OM-USDT"
+    target_stock = "ICP-USDT"
+
+    # 游戏代币
+    target_stock = "IMX-USDT"
+    target_stock = "SAND-USDT"
+    target_stock = "GALA-USDT"
 
     # target_stock = "BTC-USDT"
-    # target_stock = "LUNC-USDT"
     # target_stock = "ETH-USDT"
     # target_stock = "FLOKI-USDT"
     # target_stock = "OMI-USDT"
-    # target_stock = "DOGE-USDT"
-    # target_stock = "PEPE-USDT"
+    # target_stock = "LUNC-USDT"
+    # target_stock = "AAVE-USDT"
+    # target_stock = "RAY-USDT"
+    # target_stock = "YGG-USDT"
+    # target_stock = "VELO-USDT"
 
-    target_stock = "JST-USDT"  # 117
-    target_stock = "ZRX-USDT"  # 95
-    target_stock = "ZIL-USDT"  # 115
+    # target_stock = "JST-USDT"  # 117
+    # target_stock = "ZRX-USDT"  # 95
+    # target_stock = "ZIL-USDT"  # 115
     # target_stock = "BOME-USDT"  # 表现很不好
     # target_stock = "ARKM-USDT"  # 表现很不好
     # target_stock = "ORDI-USDT"  # 119
