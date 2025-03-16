@@ -18,3 +18,13 @@ app/utils/__pycache__
 app/error_test.py
 /app/other
 *.pyc
+app/simulate/mass_turtle.txt
+app/simulate/mass.txt
+/data2
+app/simulate/mass_turtle-有量比-有市值.txt
+app/simulate/mass_turtle-有量比.txt
+app/monitor/market_monitor.json
+market_monitor-0.json
+market_monitor-1.json
+market_monitor.json
+app/simulate/sprinter做空.txt
