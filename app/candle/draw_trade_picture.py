@@ -11,13 +11,15 @@ from matplotlib.lines import Line2D
 
 period = "1D"
 period = "4H"
-# period = "15m"
+period = "15m"
 
 compensate_dict = {
     "1D": 1,
-    "4H": 1 / 6,
+    # "4H": 1 / 6,
+    "4H": 1 / 4,
     "1H": 1 / 24,
     "15m": 1 / 48,
+    # "15m": 1 / 36,
 }
 
 compensate = compensate_dict.get(period, 1)
@@ -28,15 +30,29 @@ def plot_candlestick(ax, df):
     up = df[df['close'] >= df['open']]
     down = df[df['close'] < df['open']]
 
+    # # 绘制上涨的K线（收盘价高于开盘价，绿色）
+    # ax.bar(up.index, up['close'] - up['open'], bottom=up['open'], color='green', width=0.8 * compensate)
+    # ax.bar(up.index, up['high'] - up['close'], bottom=up['close'], color='green', width=0.2 * compensate)
+    # ax.bar(up.index, up['low'] - up['open'], bottom=up['open'], color='green', width=0.2 * compensate)
+    #
+    # # 绘制下跌的K线（开盘价高于收盘价，红色）
+    # ax.bar(down.index, down['close'] - down['open'], bottom=down['open'], color='red', width=0.8 * compensate)
+    # ax.bar(down.index, down['high'] - down['open'], bottom=down['open'], color='red', width=0.2 * compensate)
+    # ax.bar(down.index, down['low'] - down['close'], bottom=down['close'], color='red', width=0.2 * compensate)
+
+    # 计算时间间隔并动态调整柱状图宽度
+    time_diff = (df.index[1] - df.index[0]).total_seconds() / (60 * 60 * 24)  # 转换为天数
+    bar_width = time_diff * 0.8  # 柱状图宽度为时间间隔的80%
+
     # 绘制上涨的K线（收盘价高于开盘价，绿色）
-    ax.bar(up.index, up['close'] - up['open'], bottom=up['open'], color='green', width=0.8 * compensate)
-    ax.bar(up.index, up['high'] - up['close'], bottom=up['close'], color='green', width=0.2 * compensate)
-    ax.bar(up.index, up['low'] - up['open'], bottom=up['open'], color='green', width=0.2 * compensate)
+    ax.bar(up.index, up['close'] - up['open'], bottom=up['open'], color='green', width=bar_width)
+    ax.bar(up.index, up['high'] - up['close'], bottom=up['close'], color='green', width=bar_width * 0.25)
+    ax.bar(up.index, up['low'] - up['open'], bottom=up['open'], color='green', width=bar_width * 0.25)
 
     # 绘制下跌的K线（开盘价高于收盘价，红色）
-    ax.bar(down.index, down['close'] - down['open'], bottom=down['open'], color='red', width=0.8 * compensate)
-    ax.bar(down.index, down['high'] - down['open'], bottom=down['open'], color='red', width=0.2 * compensate)
-    ax.bar(down.index, down['low'] - down['close'], bottom=down['close'], color='red', width=0.2 * compensate)
+    ax.bar(down.index, down['close'] - down['open'], bottom=down['open'], color='red', width=bar_width)
+    ax.bar(down.index, down['high'] - down['open'], bottom=down['open'], color='red', width=bar_width * 0.25)
+    ax.bar(down.index, down['low'] - down['close'], bottom=down['close'], color='red', width=bar_width * 0.25)
 
 
 def draw_picture_K(total_path, target_stock, start_day=0, end_day=None):
@@ -82,7 +98,6 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     with open(total_path, 'r') as file:
         long_period_candle = json.load(file)
 
-    # long_period_candle = long_period_candle[200:350]
     if end_day is not None:
         long_period_candle = long_period_candle[start_day:end_day]
 
@@ -95,7 +110,8 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     df.set_index('timestamp', inplace=True)
 
     # 创建图形和轴
-    fig, ax1 = plt.subplots(figsize=(10, 6))
+    # fig, ax1 = plt.subplots(figsize=(10, 6))
+    fig, ax1 = plt.subplots(figsize=(14, 7))
 
     # 计算y轴的上下限
     data = df['high']
@@ -150,10 +166,14 @@ def draw_picture(total_path, target_stock, buy_days, sell_days, sell_empty_days,
     plt.scatter(sell_df['timestamp'], sell_df['value'], color='yellow', label='Sell Points', s=7.5)
     plt.scatter(sell_empty_df['timestamp'], sell_empty_df['value'], color='orange', label='Sell empty Points', s=13)
 
-    # 设置日期格式
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    ax1.xaxis.set_major_locator(mdates.DayLocator(interval=10))  # 设置x轴间隔
-    plt.xticks(rotation=45)
+    # # 设置日期格式
+    # ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    # ax1.xaxis.set_major_locator(mdates.DayLocator(interval=10))  # 设置x轴间隔
+    # plt.xticks(rotation=45)
+    # 设置时间格式（针对15分钟级别数据）
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+    ax1.xaxis.set_major_locator(mdates.HourLocator(interval=100))  # 每10小时显示一个标签
+    plt.xticks(rotation=45)  # 旋转X轴标签以便阅读
 
     # 设置图表标题和标签
     ax1.set_title(f'{target_stock} K-Line Chart')
