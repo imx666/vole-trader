@@ -293,7 +293,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
         for i in range(account_info.max_sell_times):
             position = account_info.long_position
             sell_time = account_info.sell_times
-            target_market_price = round(account_info.open_price + (0.5 * sell_time + 2) * ATR, 10)
+            target_market_price = round(account_info.open_price + (0.5 * sell_time + 1.75) * ATR, 10)
             if today_max_price > target_market_price and position > 0:
                 if i == 0:
                     print(f"{day}, today: {beijing_time(today_timestamp)}")
@@ -345,7 +345,7 @@ def execution_plan(PERIOD, target_stock, long_period_candle, total_path, draw=Fa
                 continue
 
         position = account_info.long_position
-        stop_loss_price = round(account_info.open_price - 0.5 * ATR, 10)
+        stop_loss_price = round(account_info.open_price - 2 * ATR, 10)
         target_market_price = max(stop_loss_price, down_Dochian_price)
         if today_min_price < target_market_price < today_max_price and position > 0 and flag == 0:
             print("平仓(max-0.5N线/唐奇安)")
